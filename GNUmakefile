@@ -2,7 +2,7 @@
 .SUFFIXES:
 
 # Default user QEMU flags. These are appended to the QEMU command calls.
-QEMUFLAGS := -m 2G
+QEMUFLAGS := -m 2G -no-reboot -no-shutdown -monitor stdio -s -S
 
 override IMAGE_NAME := template
 
@@ -40,7 +40,9 @@ run-uefi: edk2-ovmf $(IMAGE_NAME).iso
 run-hdd: $(IMAGE_NAME).hdd
 	qemu-system-x86_64 \
 		-M q35 \
-		-hda $(IMAGE_NAME).hdd \
+		-device ahci,id=ahci \
+		-device ide-hd,drive=disk,bus=ahci.0 \
+		-drive id=disk,if=none,file=$(IMAGE_NAME).hdd \
 		$(QEMUFLAGS)
 
 .PHONY: run-hdd-uefi

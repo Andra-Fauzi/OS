@@ -3,6 +3,11 @@
 #include <stdbool.h>
 #include <limine.h>
 
+#include "main.h"
+#include "terminal.h"
+#include "ahci.h"
+#include "paging.h"
+
 // Set the base revision to 4, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
 // See specification for further info.
@@ -94,6 +99,11 @@ static void hcf(void) {
     }
 }
 
+volatile uint32_t *framebuffer_ptr;
+volatile uint64_t framebuffer_pitch;
+volatile uint64_t framebuffer_height;
+volatile uint64_t framebuffer_width;
+
 // The following will be our kernel's entry point.
 // If renaming kmain() to something else, make sure to change the
 // linker script accordingly.
@@ -112,12 +122,86 @@ void kmain(void) {
     // Fetch the first framebuffer.
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
 
+    framebuffer_ptr = framebuffer->address;
+    framebuffer_pitch = framebuffer->pitch;
+    framebuffer_width = framebuffer->width;
+    framebuffer_height = framebuffer->height;
     // Note: we assume the framebuffer model is RGB with 32-bit pixels.
-    for (size_t i = 0; i < 100; i++) {
-        volatile uint32_t *fb_ptr = framebuffer->address;
-        fb_ptr[i * (framebuffer->pitch / 4) + i] = 0xffffff;
-    }
+    // for (size_t i = 0; i < 100; i++) {
+    //     volatile uint32_t *fb_ptr = framebuffer->address;
+    //     fb_ptr[i * (framebuffer->pitch / 4) + i] = 0xffffff;
+    // }
 
     // We're done, just hang...
+    frame_allocator_init();
+    print_str("frame allocator initialized\n");
+    uint64_t *pml4 = get_pml4();
+    print('A');
+    print('N');
+    print('D');
+    print('R');
+    print('A');
+    asm volatile("cli");
+    idt_init();
+    print_str("IDT Loaded\n");
+
+    pic_disable();
+    print_str("PIC Disabled\n");
+
+    lapic_enable(); // Pastikan di dalam sini pml4 sudah memetakan MMIO APIC!
+    print_str("APIC Enabled\n");
+
+    lapic_timer_init();
+    print_str("Timer Initialized\n");
+
+    init_keyboard();
+    print_str("Keyboard Initialized\n");
+
+    // Pastikan semua sudah siap sebelum membuka gerbang interupsi
+
+    asm volatile("cli");
+    printf("Setup AHCI\n");
+    setup_ahci();
+
+    asm volatile("sti");
+    print_str("Interrupts are now ON\n");
+
+    // printf("%f", 123213.12);
+
+    if (sataport) {
+        printf("Testing AHCI Read...\n");
+        uint64_t buf_phys = allocate_frame();
+        // Since we are now using PHYS_TO_VIRT in paging.h, we can use it here
+        uint16_t *buf = (uint16_t*)PHYS_TO_VIRT(buf_phys);
+        memset(buf, 0, 4096);
+        
+        // Read 1 sector (512 bytes) from LBA 0
+        bool success = ahci_read(sataport, 0, 0, 1, buf);
+        if(success) {
+             printf("AHCI Read Success! Data:\n");
+             for(int i=0; i<12; i++) {
+                 printf("%x ", buf[i]);
+             }
+             printf("\n");
+        } else {
+             printf("AHCI Read Failed\n");
+        }
+    } else {
+        printf("No SATA port found for testing.\n");
+    }
+
+
+    uint64_t i = allocate_frame();
+    uint64_t j = allocate_frame();
+    uint64_t k = allocate_frame();
+
+
+    while(1) {
+        char c = keyboard_getchar();
+        if (c != -1) {
+            print(c);
+        }
+    }
+
     hcf();
 }

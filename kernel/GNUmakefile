@@ -43,7 +43,7 @@ CPPFLAGS :=
 NASMFLAGS := -g
 
 # User controllable linker flags. We set none by default.
-LDFLAGS :=
+LDFLAGS := 
 
 # Ensure the dependencies have been obtained.
 ifneq ($(filter-out clean distclean,$(MAKECMDGOALS)),)
