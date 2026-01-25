@@ -305,4 +305,69 @@ void ahci_write(volatile hba_port_t *port, uint32_t start_low, uint32_t start_hi
 	}
 }
 
+// i write this all so im not lazy again
+bool identify(volatile hba_port_t *port) {
+	uint32_t count = 1;
+	uint64_t buf_phys = allocate_frame();
+	uint16_t *buf = (uint16_t *)PHYS_TO_VIRT(buf_phys);
+	port->is = (uint32_t)-1;
+	int slot = find_cmdslot(port);
+	if(slot == -1) return false;
 
+	uint64_t clb_phys = ((uint64_t)port->clbu << 32) | port->clb;
+	hba_cmd_header_t *cmdheader = (hba_cmd_header_t *)PHYS_TO_VIRT(clb_phys);	
+
+	cmdheader += slot;
+	cmdheader->cfl = sizeof(fis_reg_h2d_t)/sizeof(uint32_t);
+	cmdheader->w = 0; // read
+	cmdheader->prdtl = (uint16_t)((count-1)>>4) + 1;
+
+	uint64_t ctba_phys = ((uint64_t)cmdheader->ctbau << 32) | cmdheader->ctba;
+	hba_cmd_table_t *cmdtbl = (hba_cmd_table_t *)PHYS_TO_VIRT(ctba_phys);
+	memset((void *)cmdtbl, 0, sizeof(hba_cmd_table_t) + (cmdheader->prdtl-1)*sizeof(hba_cmd_table_t));
+	
+	int i = 0;
+	cmdtbl->prdt_entry[i].dba = (uint32_t)(buf_phys & 0xFFFFFFFF);
+	cmdtbl->prdt_entry[i].dbau = (uint32_t)(buf_phys >> 32);
+	cmdtbl->prdt_entry[i].dbc = (count * 512) - 1;
+	cmdtbl->prdt_entry[i].i = 1;
+
+	fis_reg_h2d_t *cmdfis = (fis_reg_h2d_t *)(&cmdtbl->cfis);
+	cmdfis->fis_type = 0x27;
+	cmdfis->c = 1;
+	cmdfis->command = 0xEC;
+	cmdfis->lba0 = 0;
+	cmdfis->lba1 = 0;
+	cmdfis->lba2 = 0;
+	cmdfis->lba3 = 0;
+	cmdfis->lba4 = 0;
+	cmdfis->lba5 = 0;
+	cmdfis->countl = 0;
+	cmdfis->counth = 0;
+	cmdfis->device = 1 << 6;
+
+	while((port->tfd & (0x80 | 0x08)) && (port->tfd & 1));
+
+	port->ci = 1 << slot;
+
+	while(1) {
+		if((port->ci & (1 << slot)) == 0) break;
+		if(port->is & (1 << 30)) {
+			printf("Read Disk Error\n");
+			return false;
+		}
+	}
+	if (port->is & (1 << 30)) {
+		printf("Read Disk Error\n");
+		return false;
+	}
+	uint64_t sectors =
+    ((uint64_t)buf[103] << 48) |
+    ((uint64_t)buf[102] << 32) |
+    ((uint64_t)buf[101] << 16) |
+    buf[100];
+	support = buf[83] & (1 << 10);
+	printf("sector : %d\n", sectors);
+	printf("support lba48: %d\n", support);
+	return true;
+}

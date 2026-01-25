@@ -173,14 +173,17 @@ void kmain(void) {
         uint64_t buf_phys = allocate_frame();
         // Since we are now using PHYS_TO_VIRT in paging.h, we can use it here
         uint16_t *buf = (uint16_t*)PHYS_TO_VIRT(buf_phys);
-        memset(buf, 0, 4096);
         
+        char *a = "andra fauzi";
+
         // Read 1 sector (512 bytes) from LBA 0
-        bool success = ahci_read(sataport, 0, 0, 1, buf);
+        uint8_t *buf2 = (uint8_t*)PHYS_TO_VIRT(buf_phys);
+        bool success = ahci_read(sataport, 2048, 0, 1, buf2);
+        
         if(success) {
              printf("AHCI Read Success! Data:\n");
-             for(int i=0; i<12; i++) {
-                 printf("%x ", buf[i]);
+             for(int i=0; i<512; i++) {
+                 printf("%c ", (char)buf2[i]);
              }
              printf("\n");
         } else {
@@ -188,7 +191,14 @@ void kmain(void) {
         }
     } else {
         printf("No SATA port found for testing.\n");
+	asm volatile("hlt");
     }
+
+    printf("testing identify\n");
+    identify(sataport);
+
+
+    fat_init();
 
 
     uint64_t i = allocate_frame();

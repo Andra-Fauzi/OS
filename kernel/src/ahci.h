@@ -220,5 +220,4 @@ extern volatile hba_port_t *sataport;
 void setup_ahci(void);
 bool ahci_read(volatile hba_port_t *port, uint32_t start_low, uint32_t start_high, uint32_t count, uint16_t *buf);
 void ahci_write(volatile hba_port_t *port, uint32_t start_low, uint32_t start_high, uint32_t count, uint16_t *buf);
-
-
+bool identify(volatile hba_port_t *port);
