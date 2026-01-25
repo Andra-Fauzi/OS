@@ -200,6 +200,8 @@ void kmain(void) {
 
     fat_init();
 
+    listing_root_dir();
+
 
     uint64_t i = allocate_frame();
     uint64_t j = allocate_frame();

@@ -366,7 +366,7 @@ bool identify(volatile hba_port_t *port) {
     ((uint64_t)buf[102] << 32) |
     ((uint64_t)buf[101] << 16) |
     buf[100];
-	support = buf[83] & (1 << 10);
+	bool support = buf[83] & (1 << 10);
 	printf("sector : %d\n", sectors);
 	printf("support lba48: %d\n", support);
 	return true;

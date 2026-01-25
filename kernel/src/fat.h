@@ -1,4 +1,5 @@
 #pragma once
+#include "main.h"
 #include "ahci.h"
 #include "memory.h"
 #include "paging.h"
@@ -61,4 +62,20 @@ typedef struct fat_BS
 	
 }__attribute__((packed)) fat_BS_t;
 
+typedef struct fat_dir_entry {
+	char file_name[11];
+	uint8_t attribute_file;
+	uint8_t reserved;
+	uint8_t creation_time;
+	uint16_t time_created;
+	uint16_t date_created;
+	uint16_t last_accessed_date;
+	uint16_t first_cluster_high;
+	uint16_t last_modified_time;
+	uint16_t last_modified_date;
+	uint16_t first_cluster_low;
+	uint32_t size_file;
+} __attribute__((packed)) fat_dir_entry_t;
+
 void fat_init();
+void listing_root_dir();

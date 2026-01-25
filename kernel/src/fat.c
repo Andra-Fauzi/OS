@@ -1,20 +1,121 @@
 #include "fat.h"
 
+#define OFFSET_FAT 2048
+
 enum FatType fat_type;
 
+fat_BS_t *fat = NULL;
+fat_extBS_16_t *fat_16 = NULL;
+fat_extBS_32_t *fat_32 = NULL;
+
+uint32_t total_sectors = 0;
+uint32_t fat_size = 0;
+uint32_t root_dir_sector = 0;
+uint32_t first_data_sector = 0;
+uint32_t first_fat_sector = 0;
+uint32_t data_sector = 0;
+uint32_t total_clusters = 0;
+
+uint32_t first_root_dir_sector = 0;
+uint32_t root_cluster_32 = 0;
+uint32_t first_sector_of_cluster = 0;
+
+// this for read ahci because we dont want to use all memory just for read and write right?
+static uint64_t buf_phys;
+
 void fat_init() {
-	uint64_t buf_phys = allocate_frame();	
+	buf_phys = allocate_frame();	
 	uint16_t *buf = (uint16_t *)PHYS_TO_VIRT(buf_phys);
-	bool success = ahci_read(sataport, 2048, 0, 1, buf);
+	memset(buf, 0, 512);
+	bool success = ahci_read(sataport, OFFSET_FAT, 0, 1, buf);
 	if(success) {
-		fat_BS_t *FAT = (fat_BS_t *)buf;
-		if(FAT->table_size_16 == 0) {
-			fat_extBS_32_t *FAT32 = (fat_extBS_32_t *)FAT->extended_section;
-			printf("fat version: %x", FAT32->fat_version);
-			printf("total sector: %d", FAT->total_sectors_32);
+		fat = (fat_BS_t *)buf;
+		if(fat->table_size_16 == 0) {
+			fat_32 = (fat_extBS_32_t *)fat->extended_section;
+			fat_type = FAT32;
+			total_sectors = fat->total_sectors_32;
+			fat_size = fat_32->table_size_32;
+			first_fat_sector = fat->reserved_sector_count;
+			first_data_sector = fat->reserved_sector_count + (fat->table_count * fat_size);
+			root_cluster_32 = fat_32->root_cluster;
+			first_sector_of_cluster = ((root_cluster_32 - 2) * fat->sectors_per_cluster) + first_data_sector;
+		}
+		else {
+			fat_16 = (fat_extBS_16_t *)fat->extended_section;
+			fat_type = FAT16;
+			total_sectors = fat->total_sectors_16;
+			fat_size = fat->table_size_16;
+			root_dir_sector = ((fat->root_entry_count * 32) + (fat->bytes_per_sector - 1)) / fat->bytes_per_sector;
+			first_data_sector = fat->reserved_sector_count + (fat->table_count * fat_size) + root_dir_sector;
+			first_fat_sector = fat->reserved_sector_count;
+			data_sector = total_sectors - (fat->reserved_sector_count + (fat->table_count * fat_size) + root_dir_sector);
+			total_clusters = data_sector / fat->sectors_per_cluster;
+			first_root_dir_sector = first_data_sector - root_dir_sector;
 		}
 	}
 	else {
 		printf("AHCI tidak bisa baca");
+	}
+}
+
+uint16_t FAT16_read(uint16_t active_cluster) {
+	uint16_t sector_size = fat->bytes_per_sector;
+	uint8_t FAT_table[sector_size];
+	uint32_t fat_offset = active_cluster * 2;
+	uint32_t fat_sector = first_fat_sector + (fat_offset / sector_size);
+	uint32_t ent_offset = fat_offset % sector_size;
+
+	uint16_t *buf = (uint16_t *)PHYS_TO_VIRT(buf_phys);
+	ahci_read(sataport, OFFSET_FAT + fat_sector, 0, 1, buf);
+
+	memcpy(FAT_table, buf, sector_size);
+
+	uint16_t table_value = *(uint16_t *)&FAT_table[ent_offset];
+
+	return table_value;
+}
+
+uint32_t FAT32_read(uint32_t active_cluster) {
+	uint16_t sector_size = fat->bytes_per_sector;
+	uint8_t FAT_table[sector_size];
+	uint32_t fat_offset = active_cluster * 2;
+	uint32_t fat_sector = first_fat_sector + (fat_offset / sector_size);
+	uint32_t ent_offset = fat_offset % sector_size;
+
+	uint16_t *buf = (uint16_t *)PHYS_TO_VIRT(buf_phys);
+	memset(buf, 0, 512);
+	ahci_read(sataport, OFFSET_FAT + fat_sector, 0, 1, buf);
+
+	memcpy(FAT_table, buf, sector_size);
+
+	uint32_t table_value = *(uint16_t *)&FAT_table[ent_offset];
+
+	table_value &= 0x0FFFFFFF;
+
+	return table_value;
+}
+
+uint32_t cluster_to_LBA(uint32_t cluster) {
+	return ((cluster - 2) * fat->sectors_per_cluster) + first_data_sector;
+}
+
+void listing_root_dir() {
+	printf("now listing root directory\n");
+	if(fat_type == FAT32) {
+		uint16_t *buf = (uint16_t *)PHYS_TO_VIRT(buf_phys);
+		uint32_t table_value = root_cluster_32;
+		do {
+			memset(buf, 0, 512);
+			ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, 1, buf);
+			printf("sector ke %d\n", cluster_to_LBA(table_value));
+			fat_dir_entry_t *entries = (fat_dir_entry_t *)buf;
+			for(int i = 0; i < 16; i++) {
+				fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[i];
+				if(entry->file_name[0] == 0) continue;
+				if(entry->file_name[0] == 0xE5) continue;
+				printf("nama file ini adalah %s\n", entry->file_name);
+			}
+			table_value = FAT32_read(table_value);
+		}while(table_value <= 0xFFF8);
 	}
 }
