@@ -201,9 +201,9 @@ void print_str(char *str) {
 
 void print_uint(uint64_t val) {
     if (val / 10) {
-        print_uint(val / 10); // Rekursi: urus angka di depannya dulu
+        print_uint(val / 10); // Recursion: handle the digits before it first
     }
-    // Cetak digit terakhir
+    // Print the last digit
     char c = (char)((val % 10) + '0');
     print(c);
 }
@@ -290,7 +290,7 @@ void printf(char *str, ...) {
 
 }
 
-void draw_pixel(uint32_t x, uint32_t y) {
+void draw_pixel(uint32_t x, uint32_t y, uint32_t color) {
 	if(x <= 0) {
 		x = 0;
 	}
@@ -303,5 +303,5 @@ void draw_pixel(uint32_t x, uint32_t y) {
 	else if(y >= framebuffer_height) {
 		y = framebuffer_height - 1;
 	}
-	framebuffer_ptr[y * (framebuffer_pitch / 4) + x] = 0xFFFFFFFF;
+	framebuffer_ptr[y * (framebuffer_pitch / 4) + x] = color;
 }

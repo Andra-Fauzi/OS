@@ -36,7 +36,7 @@ bool find_ohci() {
 #define OHCI_ABAR_VIRT 0xFFFF8000F0000000
 
 #define OHCI_CTRL_HCFS (3 << 6)
-#define OHCI_USB_OPERATIONAL (2 << 6) // nilai 10b untuk operational
+#define OHCI_USB_OPERATIONAL (2 << 6) // value 10b for operational
 #define OHCI_USB_SUSPEND (3 << 6)
 
 volatile ohci_regs_t *ohci_regs;
@@ -72,8 +72,8 @@ void init_OHCI() {
 
 	uint32_t val = ohci_regs->control;
 
-	val &= ~OHCI_CTRL_HCFS; // bersihkan bit 6-7
-	val |= OHCI_USB_OPERATIONAL; // set ke bit 10
+	val &= ~OHCI_CTRL_HCFS; // clear bits 6-7
+	val |= OHCI_USB_OPERATIONAL; // set to bits 10b
 	val |= (1 << 2); // PLE: Periodic List Enable
 	val |= (1 << 4); // CLE: Control List Enable
 	
@@ -160,7 +160,7 @@ void setup_mouse() {
 	ohci_regs->control_current_ed = 0;
 	ohci_regs->command_status |= (1 << 1); // ControlListFilled
 
-	uint32_t timeout = 20000000;
+	volatile uint32_t timeout = 50000000;
 	while((td_status->flags >> 28) == 0xF && (td_setup->flags >> 28) == 0xF) {
 		timeout--;
 		if(timeout == 0) break;
@@ -174,7 +174,7 @@ void setup_mouse() {
 	}
 
 	// Wait 10ms for address setting to settle
-	for(volatile int j = 0; j < 5000000; j++);
+	for(volatile int j = 0; j < 50000000; j++);
 
 	// --- Phase 2: SET_CONFIGURATION 1 ---
 	uint8_t *setup_buffer2 = (uint8_t *)malloc(8, 16);
@@ -221,26 +221,27 @@ void setup_mouse() {
 
 extern uint32_t mouse_speed;
 
-void input_mouse() {
-	uint8_t *buffer = (uint8_t *)malloc(8, 16);
+static ohci_td_t *td_dummy = NULL;
+static ohci_td_t *td = NULL;
+static ohci_ed_t *ed = NULL;
+static uint8_t *buffer = NULL;
 
-	ohci_td_t *td_dummy = (ohci_td_t *)malloc(sizeof(ohci_td_t), 16);
+// 00 = from ED, 10 = DATA0, 11 = DATA1
+static int data_toogle = 0;
+
+void input_mouse() {
+	if(buffer == NULL) {
+		buffer = (uint8_t *)malloc(8, 16);
+	}
+
+	if(td_dummy == NULL) {
+		td_dummy = (ohci_td_t *)malloc(sizeof(ohci_td_t), 16);
+	}
 	td_dummy->next_td = 0;
 
-	ohci_td_t *td = (ohci_td_t *)malloc(sizeof(ohci_td_t), 16);
-	td->flags = (1 << 18) | // DP = OUT? NO, wait.
-			(1 << 18) | (1 << 21) | (15 << 28); // Wait, I need to be careful.
-	// Let's rewrite flags clearly.
-	td->flags = (2 << 18) | // DP = IN (10b)
-			(0 << 21) | // DI = 0
-			(2 << 24) | // DT = DATA0 (10b)
-			(1 << 18) | // Buffer Rounding (bit 18 is also DP[0]?)
-			(15 << 28); // CC = Not Accessed
-
-	// Buffer rounding is bit 18. DP is bits 18-19.
-	// Bit 18: R (Buffer Rounding)
-	// Bits 19-20: DP (Direction PID)
-	// Oh! I might have misread the bit positions.
+	if(td == NULL) {
+		td = (ohci_td_t *)malloc(sizeof(ohci_td_t), 16);
+	}
 	
 	// According to OHCI spec Table 4-3:
 	// Bits 18-18: R (Buffer Rounding)
@@ -250,7 +251,6 @@ void input_mouse() {
 	// Bits 26-27: EC (Error Count)
 	// Bits 28-31: CC (Condition Code)
 	
-	// FIXED OFFSETS based on Table 4-3:
 	// R: bit 18
 	// DP: bits 19-20 (00=SETUP, 01=OUT, 10=IN)
 	// DI: bits 21-23
@@ -259,13 +259,15 @@ void input_mouse() {
 	td->flags = (1 << 18) | // R = 1
 			(2 << 19) | // DP = IN (10b)
 			(0 << 21) | // DI = 0
-			(2 << 24) | // T = DATA0 (10b)
+			(data_toogle << 24) | // T = DATA0 (10b)
 			(15 << 28); // CC = Not Accessed
 	td->current_buffer_ptr = (uint32_t)VIRT_TO_PHYS(buffer);
 	td->buffer_end_ptr = td->current_buffer_ptr + 3; // Mouse usually sends 4 bytes
 	td->next_td = (uint32_t)VIRT_TO_PHYS(td_dummy);
 
-	ohci_ed_t *ed = (ohci_ed_t *)malloc(sizeof(ohci_ed_t), 16);
+	if(ed == NULL) {
+		ed = (ohci_ed_t *)malloc(sizeof(ohci_ed_t), 16);
+	}
 	uint32_t addr = 1;
 	uint32_t en = 1; // Assuming endpoint 1 for mouse HID
 	uint32_t dir = 0; // Use TD direction
@@ -288,9 +290,11 @@ void input_mouse() {
 		hcca->interrupt_table[i] = (uint32_t)VIRT_TO_PHYS(ed);
 	}
 	
-	printf("Menunggu gerakan mouse...\n");
+	// printf("Waiting for mouse movement...\n");
+	int timeout = 10000000;
 	while((*(volatile uint32_t*)&td->flags >> 28) == 0xF) {
-		// Tunggu interupsi/transfer selesai
+		timeout--;
+		if(timeout <= 0) break;
 	}
 	
 	if((td->flags >> 28) == 0x0) {
@@ -298,6 +302,11 @@ void input_mouse() {
 		static uint32_t y_d = 0;
 		int8_t x = buffer[1];
 		int8_t y = buffer[2];
+		// for(int y_i = 0; y_i < 8; y_i++) {
+		// 	for(int x_i = 0; x_i < 8; x_i++) {
+		// 		draw_pixel(x_d + x_i, y_d + y_i, 0x0);
+		// 	}
+		// }
 		x_d += x;
 		y_d += y;
 		extern volatile uint64_t framebuffer_height;
@@ -316,12 +325,13 @@ void input_mouse() {
 		}
 		for(int y_i = 0; y_i < 8; y_i++) {
 			for(int x_i = 0; x_i < 8; x_i++) {
-				draw_pixel(x_d + x_i, y_d + y_i);
+				draw_pixel(x_d + x_i, y_d + y_i, 0xFFFFFFFF);
 			}
 		}
 		uint8_t buttons = buffer[0];
-		printf("Mouse digerakkan! Data: X=%d, Y=%d, Buttons=%x\n", x, y, buttons);
+		printf("Mouse moved! Data: X=%d, Y=%d, Buttons=%x\n", x, y, buttons);
+		// data_toogle = (data_toogle == 2) ? 3 : 2;
 	} else {
-		printf("Input Mouse Error: CC = %x\n", (td->flags >> 28));
+		// printf("Input Mouse Error: CC = %x\n", (td->flags >> 28));
 	}
 }

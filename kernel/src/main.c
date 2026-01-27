@@ -143,7 +143,7 @@ void kmain(void) {
     pic_disable();
     print_str("PIC Disabled\n");
 
-    lapic_enable(); // Pastikan di dalam sini pml4 sudah memetakan MMIO APIC!
+    lapic_enable();
     print_str("APIC Enabled\n");
 
     lapic_timer_init();
@@ -152,7 +152,7 @@ void kmain(void) {
     init_keyboard();
     print_str("Keyboard Initialized\n");
 
-    // Pastikan semua sudah siap sebelum membuka gerbang interupsi
+    // Make sure everything is ready before opening the interrupt gate
 
     asm volatile("cli");
     printf("Setup AHCI\n");
@@ -160,8 +160,6 @@ void kmain(void) {
 
     asm volatile("sti");
     print_str("Interrupts are now ON\n");
-
-    // printf("%f", 123213.12);
 
     /*
     if (sataport) {
@@ -192,28 +190,24 @@ void kmain(void) {
     identify(sataport);
 
 
-    fat_init();
-
-    listing_root_dir_print();
-    printf("tidak pake loop");
-    listing_dir_print(3);
+   
     */
 	
     init_OHCI();
     check_device_status();
-
-    char *halo = (char *)malloc(2, 4);
-
+    
+    for(volatile uint32_t i = 0; i < 0xFFFFFFFF; i++);
+    
     setup_mouse();
+    
+    
+    
     while(1) {
+        // char c = keyboard_getchar();
+        // if (c != -1) {
+        //     print(c);
+        // }
         input_mouse();
-    }
-
-    while(1) {
-        char c = keyboard_getchar();
-        if (c != -1) {
-            print(c);
-        }
 	asm volatile("hlt");
     }
 

@@ -61,7 +61,7 @@ void fat_init() {
 		}
 	}
 	else {
-		printf("AHCI tidak bisa baca");
+		printf("AHCI can't read");
 	}
 }
 
@@ -73,8 +73,8 @@ uint16_t FAT16_read(uint16_t active_cluster) {
 	uint32_t ent_offset = fat_offset % sector_size;
 
 	if (fat_sector >= fat_size) {
-    		printf("Error: Mencoba membaca di luar tabel FAT!\n");
-    		return 0xFFFF; // Batalkan pembacaan
+    		printf("Error: Try reading outside the FAT table!\n");
+    		return 0xFFFF; // Cancel reading
 	}
 
 
@@ -94,10 +94,10 @@ uint32_t FAT32_read(uint32_t active_cluster) {
 	uint32_t fat_offset = active_cluster * 4;
 	uint32_t fat_sector = first_fat_sector + (fat_offset / sector_size);
 	uint32_t ent_offset = fat_offset % sector_size;
-	// Gunakan variabel yang sudah kamu ambil dari boot sector
+	// Use variables already taken from boot sector
 	if (fat_sector >= fat_size) {
-    		printf("Error: Mencoba membaca di luar tabel FAT!\n");
-    		return 0xFFFFFFFF; // Batalkan pembacaan
+    		printf("Error: Try reading outside the FAT table!\n");
+    		return 0xFFFFFFFF; // Cancel reading
 	}
 
 
@@ -134,9 +134,9 @@ void listing_root_dir_print() {
 				fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[i];
 				if(entry->file_name[0] == 0) continue;
 				if(entry->file_name[0] == 0xE5) continue;
-				printf("nama file ini adalah %s\n", entry->file_name);
-				printf("first cluster high nya %d\n", entry->first_cluster_high);
-				printf("first cluster low nya %d\n", entry->first_cluster_low);
+				printf("name file %s\n", entry->file_name);
+				printf("first cluster high %d\n", entry->first_cluster_high);
+				printf("first cluster low  %d\n", entry->first_cluster_low);
 			}
 			table_value = FAT32_read(table_value);
 		}while(table_value < 0x0FFFFFF8);
@@ -150,9 +150,9 @@ void listing_root_dir_print() {
 				fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[i];
 				if(entry->file_name[0] == 0) continue;
 				if(entry->file_name[0] == 0xE5) continue;
-				printf("nama file ini adalah %s\n", entry->file_name);
-				printf("first cluster high nya %d\n", entry->first_cluster_high);
-				printf("first cluster low nya %d\n", entry->first_cluster_low);
+				printf("nama file %s\n", entry->file_name);
+				printf("first cluster high %d\n", entry->first_cluster_high);
+				printf("first cluster low %d\n", entry->first_cluster_low);
 			}
 		}
 	}
@@ -173,9 +173,9 @@ void listing_dir_print(uint32_t active_cluster) {
 				fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[i];
 				if(entry->file_name[0] == 0) continue;
 				if(entry->file_name[0] == 0xE5) continue;
-				printf("nama file ini adalah %s\n", entry->file_name);
-				printf("first cluster high nya %d\n", entry->first_cluster_high);
-				printf("first cluster low nya %d\n", entry->first_cluster_low);
+				printf("nama file %s\n", entry->file_name);
+				printf("first cluster high %d\n", entry->first_cluster_high);
+				printf("first cluster low %d\n", entry->first_cluster_low);
 			}
 			table_value = FAT32_read(table_value);
 		}while(table_value < 0x0FFFFFF8);
@@ -186,7 +186,7 @@ void listing_dir_print(uint32_t active_cluster) {
 			memset(buf, 0, 512);
 			bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, 1, buf);
 			if(success == false) {
-				printf("gagal baca disk coba lagi");
+				printf("failed to read disk");
 				return;
 			}
 			fat_dir_entry_t *entries = (fat_dir_entry_t *)buf;
@@ -194,11 +194,11 @@ void listing_dir_print(uint32_t active_cluster) {
 				fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[i];
 				if(entry->file_name[0] == 0) continue;
 				if(entry->file_name[0] == 0xE5) continue;
-				printf("nama file ini adalah %s\n", entry->file_name);
-				printf("first cluster high nya %d\n", entry->first_cluster_high);
-				printf("first cluster low nya %d\n", entry->first_cluster_low);
+				printf("nama file %s\n", entry->file_name);
+				printf("first cluster high %d\n", entry->first_cluster_high);
+				printf("first cluster low %d\n", entry->first_cluster_low);
 				bool isDir = entry->attribute_file & 0x10;
-				printf("apakah ini directory %d\n", isDir);
+				printf("is dir %d\n", isDir);
 			}
 			table_value = FAT16_read(table_value);
 		} while(table_value < 0xFFF8);
