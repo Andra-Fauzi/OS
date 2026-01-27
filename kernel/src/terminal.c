@@ -199,38 +199,21 @@ void print_str(char *str) {
 	}
 }
 
-void print_int(int64_t val) {
-	int64_t val_first = val;
-	int64_t limit = 10;
-	while(limit <= val_first) {
-		int64_t val_second = val_first;
-		while(val_second > limit) {
-			val_second /= 10;
-		}
-		val_second %= 10;
-		char c = (char)(val_second + 48);
-		print(c);
-		limit *= 10;
-	}
-	char c = (char)((val_first % 10) + 48);
-	print(c);
+void print_uint(uint64_t val) {
+    if (val / 10) {
+        print_uint(val / 10); // Rekursi: urus angka di depannya dulu
+    }
+    // Cetak digit terakhir
+    char c = (char)((val % 10) + '0');
+    print(c);
 }
 
-void print_uint(uint64_t val) {
-	uint64_t val_first = val;
-	uint64_t limit = 10;
-	while(limit <= val_first) {
-		uint64_t val_second = val_first;
-		while(val_second > limit) {
-			val_second /= 10;
-		}
-		val_second %= 10;
-		char c = (char)(val_second + 48);
-		print(c);
-		limit *= 10;
-	}
-	char c = (char)((val_first % 10) + 48);
-	print(c);
+void print_int(int64_t val) {
+    if (val < 0) {
+        print('-');
+        val = -val;
+    }
+    print_uint((uint64_t)val);
 }
 
 // unavailable because freestanding

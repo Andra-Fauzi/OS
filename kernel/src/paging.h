@@ -13,6 +13,7 @@ void map_page_huge(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t flags)
 #include <limine.h>
 extern volatile struct limine_hhdm_request hhdm_request;
 #define PHYS_TO_VIRT(addr) ((void*)((uint64_t)(addr) + hhdm_request.response->offset))
+#define VIRT_TO_PHYS(addr) ((uint64_t)((uint64_t)(addr) - hhdm_request.response->offset))
 
 #define PTE_PRESENT (1ULL << 0)
 #define PTE_WRITABLE (1ULL << 1)

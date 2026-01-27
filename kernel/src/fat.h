@@ -62,6 +62,7 @@ typedef struct fat_BS
 	
 }__attribute__((packed)) fat_BS_t;
 
+/*
 typedef struct fat_dir_entry {
 	char file_name[11];
 	uint8_t attribute_file;
@@ -76,6 +77,23 @@ typedef struct fat_dir_entry {
 	uint16_t first_cluster_low;
 	uint32_t size_file;
 } __attribute__((packed)) fat_dir_entry_t;
+*/
+
+typedef struct fat_dir_entry {
+    char file_name[11];             // 8 bytes nama, 3 bytes ekstensi
+    uint8_t attribute_file;         // Atribut file (ReadOnly, Hidden, Directory, dll)
+    uint8_t reserved;               // Reserved untuk Windows NT
+    uint8_t creation_time_tenth;    // Waktu pembuatan dalam perseratus detik
+    uint16_t time_created;          // Waktu pembuatan (Granularitas 2 detik)
+    uint16_t date_created;          // Tanggal pembuatan
+    uint16_t last_accessed_date;    // Tanggal terakhir diakses
+    uint16_t first_cluster_high;    // 16-bit atas dari nomor cluster (Hanya FAT32)
+    uint16_t last_modified_time;    // Waktu terakhir dimodifikasi
+    uint16_t last_modified_date;    // Tanggal terakhir dimodifikasi
+    uint16_t first_cluster_low;     // 16-bit bawah dari nomor cluster
+    uint32_t size_file;             // Ukuran file dalam bytes
+} __attribute__((packed)) fat_dir_entry_t;
 
 void fat_init();
-void listing_root_dir();
+void listing_root_dir_print();
+void listing_dir_print(uint32_t active_cluster);

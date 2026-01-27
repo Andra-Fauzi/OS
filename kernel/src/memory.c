@@ -72,3 +72,30 @@ uint64_t allocate_frame(void) {
     return 0; // out of memory
 }
 
+block_t *heap_head = NULL;
+
+void *malloc(uint64_t size, uint64_t alignment) {
+	if(size == 0) return NULL;
+
+	while(current_region < usable_region_count) {
+		struct limine_memmap_entry *r = usable_regions[current_region];
+		uint64_t start = r->base;
+		uint64_t end = r->base + r->length;
+
+		if(next_frame_addr < start) 
+			next_frame_addr = start;
+
+		uint64_t frame = (next_frame_addr + (alignment - 1)) & ~(alignment - 1);
+
+		if(frame + size <= end) {
+			next_frame_addr = frame + size;
+			uint8_t *v = (uint8_t *)PHYS_TO_VIRT(frame);
+			for(int i = 0; i < size; i++) {
+				v[i] = 0;
+			}
+			return (void *)v;
+		}
+		current_region++;
+	}
+	return NULL;
+}

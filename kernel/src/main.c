@@ -136,11 +136,6 @@ void kmain(void) {
     frame_allocator_init();
     print_str("frame allocator initialized\n");
     uint64_t *pml4 = get_pml4();
-    print('A');
-    print('N');
-    print('D');
-    print('R');
-    print('A');
     asm volatile("cli");
     idt_init();
     print_str("IDT Loaded\n");
@@ -168,14 +163,13 @@ void kmain(void) {
 
     // printf("%f", 123213.12);
 
+    /*
     if (sataport) {
         printf("Testing AHCI Read...\n");
         uint64_t buf_phys = allocate_frame();
         // Since we are now using PHYS_TO_VIRT in paging.h, we can use it here
         uint16_t *buf = (uint16_t*)PHYS_TO_VIRT(buf_phys);
         
-        char *a = "andra fauzi";
-
         // Read 1 sector (512 bytes) from LBA 0
         uint8_t *buf2 = (uint8_t*)PHYS_TO_VIRT(buf_phys);
         bool success = ahci_read(sataport, 2048, 0, 1, buf2);
@@ -200,19 +194,25 @@ void kmain(void) {
 
     fat_init();
 
-    listing_root_dir();
+    listing_root_dir_print();
+    printf("tidak pake loop");
+    listing_dir_print(3);
+    */
+	
+    init_OHCI();
+    check_device_status();
 
+    char *halo = (char *)malloc(2, 4);
 
-    uint64_t i = allocate_frame();
-    uint64_t j = allocate_frame();
-    uint64_t k = allocate_frame();
-
+    setup_mouse();
+    input_mouse();
 
     while(1) {
         char c = keyboard_getchar();
         if (c != -1) {
             print(c);
         }
+	asm volatile("hlt");
     }
 
     hcf();
