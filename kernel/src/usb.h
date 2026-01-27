@@ -4,14 +4,15 @@
 #include "paging.h"
 #include "pci.h"
 #include "memory.h"
+#include "terminal.h"
 
-typedef volatile struct ohci_hhca {
+typedef volatile struct ohci_hcca {
 	uint32_t interrupt_table[32];
 	uint16_t frame_number;
 	uint16_t pad1;
 	uint32_t done_head;
 	uint8_t reserved[116];
-} __attribute__((packed)) ohci_hhca_t;
+} __attribute__((packed)) ohci_hcca_t;
 
 typedef volatile struct ohci_ed {
 	uint32_t flags;
@@ -34,7 +35,7 @@ typedef volatile struct ohci_regs {
 	uint32_t interrupt_status;
 	uint32_t interrupt_enable;
 	uint32_t interrupt_disable;
-	uint32_t hhca;
+	uint32_t hcca;
 	uint32_t period_current_ed;
 	uint32_t control_head_ed;
 	uint32_t control_current_ed;

@@ -40,7 +40,7 @@ bool find_ohci() {
 #define OHCI_USB_SUSPEND (3 << 6)
 
 volatile ohci_regs_t *ohci_regs;
-volatile ohci_hhca_t *hhca;
+volatile ohci_hcca_t *hcca;
 
 void init_OHCI() {
 	if(!find_ohci()) return;
@@ -74,10 +74,13 @@ void init_OHCI() {
 
 	val &= ~OHCI_CTRL_HCFS; // bersihkan bit 6-7
 	val |= OHCI_USB_OPERATIONAL; // set ke bit 10
-	val |= (1 << 2); // CLE: Control List Enable
-	val |= (1 << 4); // PLE: Periodic List Enable
+	val |= (1 << 2); // PLE: Periodic List Enable
+	val |= (1 << 4); // CLE: Control List Enable
 	
 	ohci_regs->control = val;
+
+	hcca = (volatile ohci_hcca_t *)malloc(sizeof(ohci_hcca_t), 256);
+	ohci_regs->hcca = (uint32_t)VIRT_TO_PHYS(hcca);
 	
 	if ((ohci_regs->control & OHCI_CTRL_HCFS) == OHCI_USB_OPERATIONAL) {
 		printf("Status Successfully change to USB OPERATIONAL\n");
@@ -126,96 +129,93 @@ void setup_mouse() {
 	}
 
 	uint8_t *setup_buffer = (uint8_t *)malloc(8, 16);
-	setup_buffer[0] = 0x00; // Type: Standard, Recipient: Device
-	setup_buffer[1] = 0x05; // Request: SET_ADDRESS
-	setup_buffer[2] = 0x01; // Address = 1
-	setup_buffer[3] = 0x00;
-	setup_buffer[4] = 0x00;
-	setup_buffer[5] = 0x00;
-	setup_buffer[6] = 0x00;
-	setup_buffer[7] = 0x00;
+	
+	// --- Phase 1: SET_ADDRESS 1 ---
+	setup_buffer[0] = 0x00; // Standard, Device
+	setup_buffer[1] = 0x05; // SET_ADDRESS
+	setup_buffer[2] = 0x01; // Address 1
+	for(int i=3; i<8; i++) setup_buffer[i] = 0;
 
 	ohci_td_t *td_dummy = (ohci_td_t *)malloc(sizeof(ohci_td_t), 16);
-    	td_dummy->next_td = 0;
-
 	ohci_td_t *td_setup = (ohci_td_t *)malloc(sizeof(ohci_td_t), 16);
-	td_setup->flags = (0 << 19) | (2 << 24) | (15 << 28); // DP=SETUP (00b), T=DATA0 (10b)
+	ohci_td_t *td_status = (ohci_td_t *)malloc(sizeof(ohci_td_t), 16);
+	ohci_ed_t *ed = (ohci_ed_t *)malloc(sizeof(ohci_ed_t), 16);
+
+	td_setup->flags = (0 << 19) | (2 << 24) | (15 << 28); // DP=SETUP, T=DATA0
 	td_setup->current_buffer_ptr = (uint32_t)VIRT_TO_PHYS(setup_buffer);
 	td_setup->buffer_end_ptr = td_setup->current_buffer_ptr + 7;
+	td_setup->next_td = (uint32_t)VIRT_TO_PHYS(td_status);
 
-	ohci_td_t *td_status = (ohci_td_t *)malloc(sizeof(ohci_td_t), 16);	
-	td_status->flags = (1 << 18) | (2 << 19) | (3 << 24) | (15 << 28); // R=1, DP=IN (10b), T=DATA1 (11b)
+	td_status->flags = (1 << 18) | (2 << 19) | (3 << 24) | (15 << 28); // R=1, DP=IN, T=DATA1
 	td_status->current_buffer_ptr = 0;
 	td_status->buffer_end_ptr = 0;
 	td_status->next_td = (uint32_t)VIRT_TO_PHYS(td_dummy);
 
-	td_setup->next_td = (uint32_t)VIRT_TO_PHYS(td_status);
-
-	ohci_ed_t *ed = (ohci_ed_t *)malloc(sizeof(ohci_ed_t), 16);
-	ed->flags = 	(0 << 0) | // Address 0
-			(0 << 7) | // Endpoint 0
-			(mouse_speed << 13) | // Speed
-			(8 << 16); // MaxPacketSize 8
+	ed->flags = (0 << 0) | (0 << 7) | (mouse_speed << 13) | (8 << 16); // Addr 0, Endp 0
 	ed->head_pointer = (uint32_t)VIRT_TO_PHYS(td_setup);
 	ed->tail_pointer = (uint32_t)VIRT_TO_PHYS(td_dummy);
 	ed->next_ed = 0;
 
 	ohci_regs->control_head_ed = (uint32_t)VIRT_TO_PHYS(ed);
+	ohci_regs->control_current_ed = 0;
 	ohci_regs->command_status |= (1 << 1); // ControlListFilled
 
-	int timeout = 10000000;
-	while((td_status->flags >> 28) == 0xF) {
+	uint32_t timeout = 20000000;
+	while((td_status->flags >> 28) == 0xF && (td_setup->flags >> 28) == 0xF) {
 		timeout--;
-		if(timeout <= 0) {
-			printf("SET_ADDRESS timeout\n");
-			break;
-		}
+		if(timeout == 0) break;
 	}
 	
 	if((td_status->flags >> 28) == 0x0) {
-		printf("Set Address Success! Device now in Address 1\n");
+		printf("Set Address Success!\n");
 	} else {
-		printf("Set Address Error: CC = %x\n", (td_status->flags >> 28));
+		printf("Set Address Fail: Setup CC=%x, Status CC=%x\n", td_setup->flags >> 28, td_status->flags >> 28);
 		return;
 	}
 
-	// Wait a bit for the device to settle on the new address
-	for(volatile int j = 0; j < 1000000; j++);
+	// Wait 10ms for address setting to settle
+	for(volatile int j = 0; j < 5000000; j++);
 
-	// SET_CONFIGURATION 1
-	uint8_t *setup_buffer1 = (uint8_t *)malloc(8, 16);
-	setup_buffer1[0] = 0x00;
-	setup_buffer1[1] = 0x09; // SET_CONFIGURATION
-	setup_buffer1[2] = 0x01; // Configuration 1
-	setup_buffer1[3] = 0x00;
+	// --- Phase 2: SET_CONFIGURATION 1 ---
+	uint8_t *setup_buffer2 = (uint8_t *)malloc(8, 16);
+	setup_buffer2[0] = 0x00;
+	setup_buffer2[1] = 0x09; // SET_CONFIGURATION
+	setup_buffer2[2] = 0x01; // Config 1
+	for(int i=3; i<8; i++) setup_buffer2[i] = 0;
 
-	td_setup->flags = (0 << 19) | (2 << 24) | (15 << 28); // DP=SETUP, T=DATA0
-	td_setup->current_buffer_ptr = (uint32_t)VIRT_TO_PHYS(setup_buffer1);
-	td_setup->buffer_end_ptr = td_setup->current_buffer_ptr + 7;
+	// Use fresh TDs for second request to be safe
+	ohci_td_t *td_dummy2 = (ohci_td_t *)malloc(sizeof(ohci_td_t), 16);
+	ohci_td_t *td_setup2 = (ohci_td_t *)malloc(sizeof(ohci_td_t), 16);
+	ohci_td_t *td_status2 = (ohci_td_t *)malloc(sizeof(ohci_td_t), 16);
 
-	td_status->flags = (1 << 18) | (2 << 19) | (3 << 24) | (15 << 28); // R=1, DP=IN, T=DATA1
-	td_status->current_buffer_ptr = 0;
-	td_status->buffer_end_ptr = 0;
+	td_setup2->flags = (0 << 19) | (2 << 24) | (15 << 28);
+	td_setup2->current_buffer_ptr = (uint32_t)VIRT_TO_PHYS(setup_buffer2);
+	td_setup2->buffer_end_ptr = td_setup2->current_buffer_ptr + 7;
+	td_setup2->next_td = (uint32_t)VIRT_TO_PHYS(td_status2);
 
-	ed->flags = (1 << 0) | (0 << 7) | (mouse_speed << 13) | (8 << 16);
-	ed->head_pointer = (uint32_t)VIRT_TO_PHYS(td_setup);
+	td_status2->flags = (1 << 18) | (2 << 19) | (3 << 24) | (15 << 28);
+	td_status2->current_buffer_ptr = 0;
+	td_status2->buffer_end_ptr = 0;
+	td_status2->next_td = (uint32_t)VIRT_TO_PHYS(td_dummy2);
 
-	ohci_regs->control_current_ed = 0; // Force start from head
+	ed->flags = (1 << 0) | (0 << 7) | (mouse_speed << 13) | (8 << 16); // Addr 1
+	ed->head_pointer = (uint32_t)VIRT_TO_PHYS(td_setup2);
+	ed->tail_pointer = (uint32_t)VIRT_TO_PHYS(td_dummy2);
+
+	ohci_regs->control_current_ed = 0;
 	ohci_regs->command_status |= (1 << 1);
 
-	timeout = 100000000;
-	while((td_status->flags >> 28) == 0xF) {
+	timeout = 20000000;
+	while((td_status2->flags >> 28) == 0xF && (td_setup2->flags >> 28) == 0xF) {
 		timeout--;
-		if(timeout <= 0) {
-			printf("SET_CONFIGURATION timeout (ED Head: %x, ED Flags: %x)\n", ed->head_pointer, ed->flags);
-			break;
-		}
+		if(timeout == 0) break;
 	}
 
-	if((td_status->flags >> 28) == 0x0) {
+	if((td_status2->flags >> 28) == 0x0) {
 		printf("Set Configuration Success!\n");
 	} else {
-		printf("Set Configuration Error: CC = %x\n", (td_status->flags >> 28));
+		printf("Set Configuration Fail: Setup CC=%x, Status CC=%x\n", td_setup2->flags >> 28, td_status2->flags >> 28);
+		printf("ED Status: Head=%x, Current=%x\n", ed->head_pointer, ohci_regs->control_current_ed);
 	}
 }
 
@@ -280,14 +280,12 @@ void input_mouse() {
 	ed->tail_pointer = (uint32_t)VIRT_TO_PHYS(td_dummy);
 	ed->head_pointer = (uint32_t)VIRT_TO_PHYS(td);
 
-	volatile ohci_hhca_t * _hhca = (ohci_hhca_t *)malloc(sizeof(ohci_hhca_t), 256);
-
-	ohci_regs->hhca = (uint32_t)VIRT_TO_PHYS(_hhca);
+	// Use the virtual pointer we saved in init_OHCI!
 	ohci_regs->period_current_ed = 0;
 	ohci_regs->control |= (1 << 2); // PLE: Periodic List Enable
-	ohci_regs->control |= (1 << 4); // PLE = Periodic List Enable
+	ohci_regs->control |= (1 << 4); // CLE: Control List Enable
 	for(int i = 0; i < 32; i++) {
-		_hhca->interrupt_table[i] = (uint32_t)VIRT_TO_PHYS(ed);
+		hcca->interrupt_table[i] = (uint32_t)VIRT_TO_PHYS(ed);
 	}
 	
 	printf("Menunggu gerakan mouse...\n");
@@ -296,7 +294,33 @@ void input_mouse() {
 	}
 	
 	if((td->flags >> 28) == 0x0) {
-		printf("Mouse digerakkan! Data: X=%d, Y=%d, Buttons=%x\n", (int8_t)buffer[1], (int8_t)buffer[2], buffer[0]);
+		static uint32_t x_d = 0;
+		static uint32_t y_d = 0;
+		int8_t x = buffer[1];
+		int8_t y = buffer[2];
+		x_d += x;
+		y_d += y;
+		extern volatile uint64_t framebuffer_height;
+		extern volatile uint64_t framebuffer_width;
+		if(x_d <= 0) {
+			x_d = 0;
+		}
+		else if(x_d >= framebuffer_width) {
+			x_d = framebuffer_width - 1;
+		}
+		if(y_d <= 0) {
+			y_d = 0;
+		}
+		else if(y_d >= framebuffer_height) {
+			y_d = framebuffer_height - 1;
+		}
+		for(int y_i = 0; y_i < 8; y_i++) {
+			for(int x_i = 0; x_i < 8; x_i++) {
+				draw_pixel(x_d + x_i, y_d + y_i);
+			}
+		}
+		uint8_t buttons = buffer[0];
+		printf("Mouse digerakkan! Data: X=%d, Y=%d, Buttons=%x\n", x, y, buttons);
 	} else {
 		printf("Input Mouse Error: CC = %x\n", (td->flags >> 28));
 	}

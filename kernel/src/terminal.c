@@ -289,3 +289,19 @@ void printf(char *str, ...) {
 	va_end(args);
 
 }
+
+void draw_pixel(uint32_t x, uint32_t y) {
+	if(x <= 0) {
+		x = 0;
+	}
+	else if(x >= framebuffer_width) {
+		x = framebuffer_width - 1;
+	}
+	if(y <= 0) {
+		y = 0;
+	}
+	else if(y >= framebuffer_height) {
+		y = framebuffer_height - 1;
+	}
+	framebuffer_ptr[y * (framebuffer_pitch / 4) + x] = 0xFFFFFFFF;
+}

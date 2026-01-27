@@ -10,3 +10,4 @@ void printf(char *str, ...);
 void clear_screen();
 void terminal_scroll();
 void print_uint(uint64_t val);
+void draw_pixel(uint32_t x, uint32_t y);

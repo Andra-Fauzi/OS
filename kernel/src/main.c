@@ -205,7 +205,9 @@ void kmain(void) {
     char *halo = (char *)malloc(2, 4);
 
     setup_mouse();
-    input_mouse();
+    while(1) {
+        input_mouse();
+    }
 
     while(1) {
         char c = keyboard_getchar();
