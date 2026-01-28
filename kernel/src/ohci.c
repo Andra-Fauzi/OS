@@ -1,4 +1,4 @@
-#include "usb.h"
+#include "ohci.h"
 // we will use OHCI or Open Host Controller Interface
 
 uint8_t ohci_bus = 0;
@@ -96,7 +96,7 @@ void check_device_status() {
 		if(ohci_regs->root_hub_port_status[i] & (1 << 0)) {
 			printf("device on port %d\n", i);
 
-			ohci_regs->root_hub_port_status[i] = (1 << 4);
+			ohci_regs->root_hub_port_status[i] = (1 << 4); // PortReset
 
 			int timeout = 10000000;
 			while(!(ohci_regs->root_hub_port_status[i] & (1 << 20))) {
@@ -106,8 +106,16 @@ void check_device_status() {
 					return;
 				}
 			}
-			ohci_regs->root_hub_port_status[i] = (1 << 20);
-			printf("Successfully OHCI port reset\n");
+			ohci_regs->root_hub_port_status[i] = (1 << 20); // Clear ResetStatusChange
+            
+            // Wait a bit for the port to stabilize and update its status
+            for(volatile int j = 0; j < 10000000; j++);
+
+            if(ohci_regs->root_hub_port_status[i] & (1 << 1)) {
+			    printf("Successfully OHCI port reset and enabled\n");
+            } else {
+                printf("Port reset done but port not enabled (Status: %x)\n", ohci_regs->root_hub_port_status[i]);
+            }
 		}
 	}
 }
@@ -262,7 +270,7 @@ void input_mouse() {
 			(data_toogle << 24) | // T = DATA0 (10b)
 			(15 << 28); // CC = Not Accessed
 	td->current_buffer_ptr = (uint32_t)VIRT_TO_PHYS(buffer);
-	td->buffer_end_ptr = td->current_buffer_ptr + 3; // Mouse usually sends 4 bytes
+	td->buffer_end_ptr = td->current_buffer_ptr + 7; // Mouse sends 4-8 bytes
 	td->next_td = (uint32_t)VIRT_TO_PHYS(td_dummy);
 
 	if(ed == NULL) {
@@ -286,9 +294,14 @@ void input_mouse() {
 	ohci_regs->period_current_ed = 0;
 	ohci_regs->control |= (1 << 2); // PLE: Periodic List Enable
 	ohci_regs->control |= (1 << 4); // CLE: Control List Enable
-	for(int i = 0; i < 32; i++) {
-		hcca->interrupt_table[i] = (uint32_t)VIRT_TO_PHYS(ed);
-	}
+	static bool set_interrupt_table = false;
+	// if(set_interrupt_table == false)
+	// {
+		for(int i = 0; i < 32; i++) {
+			hcca->interrupt_table[i] = (uint32_t)VIRT_TO_PHYS(ed);
+		}
+	// 	set_interrupt_table = true;
+	// }
 	
 	// printf("Waiting for mouse movement...\n");
 	int timeout = 10000000;
@@ -330,8 +343,9 @@ void input_mouse() {
 		}
 		uint8_t buttons = buffer[0];
 		printf("Mouse moved! Data: X=%d, Y=%d, Buttons=%x\n", x, y, buttons);
-		// data_toogle = (data_toogle == 2) ? 3 : 2;
 	} else {
-		// printf("Input Mouse Error: CC = %x\n", (td->flags >> 28));
+		printf("Input Mouse Error: CC = %x\n", (td->flags >> 28));
 	}
+	// Ambil alamat fisik TD baru, pastikan bit 0 (Halted) di head_pointer nol
+	data_toogle = (data_toogle == 2) ? 3 : 2;
 }

@@ -193,12 +193,17 @@ void kmain(void) {
    
     */
 	
-    init_OHCI();
-    check_device_status();
+    // init_OHCI();
+    // check_device_status();
     
-    for(volatile uint32_t i = 0; i < 0xFFFFFFFF; i++);
+    // for(volatile uint32_t i = 0; i < 0xFFFFFFFF; i++);
     
-    setup_mouse();
+    // setup_mouse();
+    // while(1) {
+    // }
+    
+    setup_ehci();
+    setup_mouse_ehci();
     
     
     
@@ -207,7 +212,7 @@ void kmain(void) {
         // if (c != -1) {
         //     print(c);
         // }
-        input_mouse();
+        // input_mouse();
 	asm volatile("hlt");
     }
 
