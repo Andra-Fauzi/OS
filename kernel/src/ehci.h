@@ -39,6 +39,55 @@ typedef struct queue_head {
     uint32_t buffer[5];
 } __attribute__((packed, aligned(32))) ehci_queue_head_t;
 
+typedef struct usb_device_descriptor {
+    uint8_t length;
+    uint8_t descriptor_type;
+    uint16_t bcd_usb;
+    uint8_t device_class;
+    uint8_t device_subclass;
+    uint8_t device_protocol;
+    uint8_t max_packet_size0;
+    uint16_t vendor_id;
+    uint16_t product_id;
+    uint16_t bcd_device;
+    uint8_t manufacturer;
+    uint8_t product;
+    uint8_t serial_number;
+    uint8_t num_configurations;
+} __attribute__((packed)) usb_device_descriptor_t;
+
+typedef struct usb_config_descriptor {
+    uint8_t length;
+    uint8_t descriptor_type;
+    uint16_t total_length;
+    uint8_t num_interfaces;
+    uint8_t configuration_value;
+    uint8_t configuration;
+    uint8_t attributes;
+    uint8_t max_power;
+} __attribute__((packed)) usb_config_descriptor_t;
+
+typedef struct usb_interface_descriptor {
+    uint8_t length;
+    uint8_t descriptor_type;
+    uint8_t interface_number;
+    uint8_t alternate_setting;
+    uint8_t num_endpoints;
+    uint8_t interface_class;
+    uint8_t interface_subclass;
+    uint8_t interface_protocol;
+    uint8_t interface;
+} __attribute__((packed)) usb_interface_descriptor_t;
+
+typedef struct usb_endpoint_descriptor {
+    uint8_t length;
+    uint8_t descriptor_type;
+    uint8_t endpoint_address;
+    uint8_t attributes;
+    uint16_t max_packet_size;
+    uint8_t interval;
+} __attribute__((packed)) usb_endpoint_descriptor_t;
+
 typedef struct queue_element_transfer_descriptor {
     uint32_t next_qtd;
     uint32_t alt_next_qtd;
@@ -49,3 +98,4 @@ typedef struct queue_element_transfer_descriptor {
 bool find_device_port();
 void setup_ehci();
 void setup_mouse_ehci();
+void input_mouse_ehci();

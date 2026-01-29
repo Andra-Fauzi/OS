@@ -194,16 +194,23 @@ void kmain(void) {
     */
 	
     // init_OHCI();
-    // check_device_status();
     
     // for(volatile uint32_t i = 0; i < 0xFFFFFFFF; i++);
     
     // setup_mouse();
     // while(1) {
     // }
-    
+        
+    // printf("test check 1\n");
+    // check_device_status();
     setup_ehci();
+    // printf("test check 2\n");
+    // check_device_status();
     setup_mouse_ehci();
+
+    while(1) {
+        input_mouse_ehci();
+    }
     
     
     
