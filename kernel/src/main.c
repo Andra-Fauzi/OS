@@ -161,7 +161,6 @@ void kmain(void) {
     asm volatile("sti");
     print_str("Interrupts are now ON\n");
 
-    /*
     if (sataport) {
         printf("Testing AHCI Read...\n");
         uint64_t buf_phys = allocate_frame();
@@ -170,7 +169,9 @@ void kmain(void) {
         
         // Read 1 sector (512 bytes) from LBA 0
         uint8_t *buf2 = (uint8_t*)PHYS_TO_VIRT(buf_phys);
-        bool success = ahci_read(sataport, 2048, 0, 1, buf2);
+        bool success = ahci_read(sataport, 0, 0, 1, buf2);
+        MBR_t *mbr = (MBR_t*)buf2;
+        partition_entry_t *partition = (partition_entry_t*)mbr->partition_table;
         
         if(success) {
              printf("AHCI Read Success! Data:\n");
@@ -178,6 +179,14 @@ void kmain(void) {
                  printf("%c ", (char)buf2[i]);
              }
              printf("\n");
+             printf("Partition Table:\n");
+             for(int i=0; i<4; i++) {
+                 printf("Partition %d:\n", i+1);
+                 printf("  Bootable: %d\n", partition[i].bootable);
+                 printf("  Type: %x\n", partition[i].type);
+                 printf("  Start Sector: %d\n", partition[i].LBA_start_sector);
+                 printf("  Total Sectors: %d\n", partition[i].total_sectors);
+             }
         } else {
              printf("AHCI Read Failed\n");
         }
@@ -189,12 +198,42 @@ void kmain(void) {
     printf("testing identify\n");
     identify(sataport);
 
-
-   
-    */
+    uint32_t total = 0;
+    fat_init();
+    fat_dir_entry_t *entries = listing_root_dir(&total);
+    printf("total entries %d\n", total);
+    if(entries == NULL) {
+	    printf("ERROR disk\n");
+	    while(1);
+    }
+    for(uint32_t i = 0; i < ((512 / 32) * total); i++) {
+	    fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[i];
+	    if(entry->file_name[0] == 0) continue;
+	    if(entry->file_name[0] == 0xE5) continue;
+	    printf("nama file %s\n", entry->file_name);
+    }
 	
-    // init_OHCI();
-    
+    // char *halo = (char *)malloc(sizeof(char) * 5, 4);
+    // halo[0] = 'a';
+    // halo[1] = 'n';
+    // halo[2] = 'd';
+    // halo[3] = 'r';
+    // halo[4] = 'a';
+    // printf("str: %s\n", halo);
+    // printf("alamat: %x\n", &halo[0]);
+    // free(halo);
+    // char *sigma = (char *)malloc(sizeof(char) * 5, 32);
+    // sigma[0] = 's';
+    // sigma[1] = 'i';
+    // sigma[2] = 'g';
+    // sigma[3] = 'm';
+    // sigma[4] = 'a';
+    // printf("str: %s\n", sigma);
+    // printf("alamat: %x\n", &sigma[0]);
+    // printf("str: %s\n", halo);
+    // printf("alamat: %x\n", &halo[0]);
+    // something();
+
     // for(volatile uint32_t i = 0; i < 0xFFFFFFFF; i++);
     
     // setup_mouse();
@@ -203,14 +242,17 @@ void kmain(void) {
         
     // printf("test check 1\n");
     // check_device_status();
-    setup_ehci();
+    // setup_ehci();
+    // init_OHCI();
     // printf("test check 2\n");
+    // find_device_port_and_sign_address();
     // check_device_status();
-    setup_mouse_ehci();
+    // setup_mouse_ehci();
+    // setup_mouse();
 
-    while(1) {
-        input_mouse_ehci();
-    }
+    // while(1) {
+    //     input_mouse_ehci();
+    // }
     
     
     

@@ -84,6 +84,30 @@ override CFLAGS += \
     -mno-red-zone \
     -mcmodel=kernel
 
+# Internal C++ flags that should not be changed by the user.
+override CXXFLAGS += \
+    -Wall \
+    -Wextra \
+    -std=gnu++11 \
+    -nostdinc++ \
+    -ffreestanding \
+    -fno-stack-protector \
+    -fno-stack-check \
+    -fno-lto \
+    -fno-PIC \
+    -ffunction-sections \
+    -fdata-sections \
+    -m64 \
+    -march=x86-64 \
+    -mabi=sysv \
+    -mno-80387 \
+    -mno-mmx \
+    -mno-sse \
+    -mno-sse2 \
+    -mno-red-zone \
+    -mcmodel=kernel \
+    -Drestrict=__restrict__
+
 # Internal C preprocessor flags that should not be changed by the user.
 override CPPFLAGS := \
     -I src \
@@ -112,10 +136,11 @@ override LDFLAGS += \
 # object and header dependency file names.
 override SRCFILES := $(shell find -L src cc-runtime/src -type f 2>/dev/null | LC_ALL=C sort)
 override CFILES := $(filter %.c,$(SRCFILES))
+override CPPFILES := $(filter %.cpp,$(SRCFILES))
 override ASFILES := $(filter %.S,$(SRCFILES))
 override NASMFILES := $(filter %.asm,$(SRCFILES))
-override OBJ := $(addprefix obj/,$(CFILES:.c=.c.o) $(ASFILES:.S=.S.o) $(NASMFILES:.asm=.asm.o))
-override HEADER_DEPS := $(addprefix obj/,$(CFILES:.c=.c.d) $(ASFILES:.S=.S.d))
+override OBJ := $(addprefix obj/,$(CFILES:.c=.c.o) $(CPPFILES:.cpp=.cpp.o) $(ASFILES:.S=.S.o) $(NASMFILES:.asm=.asm.o))
+override HEADER_DEPS := $(addprefix obj/,$(CFILES:.c=.c.d) $(CPPFILES:.cpp=.cpp.d) $(ASFILES:.S=.S.d))
 
 # Default target. This must come first, before header dependencies.
 .PHONY: all
@@ -133,6 +158,11 @@ bin/$(OUTPUT): GNUmakefile linker-scripts/x86_64.lds $(OBJ)
 obj/%.c.o: %.c GNUmakefile
 	mkdir -p "$(dir $@)"
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+
+# Compilation rules for *.cpp files.
+obj/%.cpp.o: %.cpp GNUmakefile
+	mkdir -p "$(dir $@)"
+	$(CC) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
 # Compilation rules for *.S files.
 obj/%.S.o: %.S GNUmakefile

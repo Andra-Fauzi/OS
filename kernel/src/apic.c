@@ -136,6 +136,15 @@ void lapic_timer_init(void) {
     lapic_write(LAPIC_TIMER_INIT, 0x100000);
 }
 
+static volatile uint64_t tick = 0;
+
+void sleep(uint64_t ms) {
+	uint64_t target = tick + ms;
+	while (tick < target) {
+		asm volatile("hlt");
+	}
+}
+
 /* =======================
    ISR
    ======================= */
@@ -144,7 +153,6 @@ void isr_timer(void *frame) {
     (void)frame;
 
     /* DO NOT PRINT TOO OFTEN */
-    static uint64_t tick = 0;
     if (1) {
         // print_str("timer jalan\n");
     }

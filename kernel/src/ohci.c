@@ -33,7 +33,7 @@ bool find_ohci() {
     return false;
 }
 
-#define OHCI_ABAR_VIRT 0xFFFF8000F0000000
+#define OHCI_ABAR_VIRT 0xFFFF800F00000000
 
 #define OHCI_CTRL_HCFS (3 << 6)
 #define OHCI_USB_OPERATIONAL (2 << 6) // value 10b for operational
@@ -92,6 +92,7 @@ void init_OHCI() {
 
 void check_device_status() {
 	uint32_t num_ports = ohci_regs->root_hub_descriptor_A & 0xFF;
+	printf("num_ports %d\n", num_ports);
 	for(uint32_t i = 0; i < num_ports; i++) {
 		if(ohci_regs->root_hub_port_status[i] & (1 << 0)) {
 			printf("device on port %d\n", i);

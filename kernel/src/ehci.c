@@ -379,7 +379,7 @@ bool find_device_port() {
 }
 
 // total address is same as total device so device port 0 will assigned to address 1 like that
-static int total_device = 0;
+static int total_device = 0; // if total device is 1 then address is 1, if 2 then address is 2 and so on
 
 void find_device_port_and_sign_address() {
     uint8_t N_PORT = capability_regs->hcs_params & 0x7;
@@ -428,12 +428,12 @@ static volatile uint8_t* mouse_data_buf = NULL;
 static uint8_t mouse_toggle = 0;
 
 void setup_mouse_ehci() {
-    // printf("find device\n");
-    // if(!find_device_port()) {
-    //     printf("EHCI: No high speed devices found, skipping setup.\n");
-    //     return;
-    // }
-    find_device_port_and_sign_address();
+    printf("find device\n");
+    if(!find_device_port()) {
+        printf("EHCI: No high speed devices found, skipping setup.\n");
+        return;
+    }
+    // find_device_port_and_sign_address();
     // get device descriptor
     uint8_t* dev_desc_raw = get_descriptor(queue_heads, 1, 0, 18);
     if (!dev_desc_raw) return;
@@ -495,6 +495,8 @@ void setup_mouse_ehci() {
         ptr += len;
         processed += len;
     }
+    
+    printf("Final Endpoint Configuration: EP=%d, MaxPacketSize=%d\n", endpoint, max_packet_size);
 }
 
 void input_mouse_ehci() {
@@ -512,10 +514,11 @@ void input_mouse_ehci() {
         memset((void*)mouse_qtd, 0, sizeof(ehci_qtd_t));
 
         mouse_qh->horizontal_link_pointer = 1; // Terminate for periodic
-        // Address 1, EP, EPS=High (2), Max Packet
-        mouse_qh->endpoint_characteristics = 1 | (endpoint << 8) | (2 << 12) | (max_packet_size << 16);
-        mouse_qh->endpoint_capabilities = (1 << 30); // Multiplier = 1
+        // Address 1, EP, EPS=High (2), Max Packet, DTC=1 for interrupt
+        mouse_qh->endpoint_characteristics = 1 | (endpoint << 8) | (2 << 12) | (max_packet_size << 16) | (1 << 14);
+        mouse_qh->endpoint_capabilities = (3 << 28) | (1 << 30); // NAK Count Reload=3, Multiplier = 1
         
+        // Token: DATA0, Total Bytes, CERR=3, PID=IN, Active
         mouse_qtd->token = (0 << 31) | (max_packet_size << 16) | (3 << 10) | (1 << 8) | (1 << 7);
         mouse_qtd->buffer[0] = (uint32_t)VIRT_TO_PHYS(mouse_data_buf);
         mouse_qtd->next_qtd = 1;
@@ -572,10 +575,19 @@ void input_mouse_ehci() {
             printf("Mouse QTD Halted! Token: %x\n", mouse_qtd->token);
         }
 
-        // Reactivate
+        // Reactivate: Clear QH overlay token first to ensure clean state
+        mouse_qh->token = 0;
+        
+        // Toggle data toggle bit (DATA0 -> DATA1 -> DATA0 ...)
         mouse_toggle ^= 1;
+        
+        // Reset qTD: clear all status/error bits, set new data toggle
+        mouse_qtd->next_qtd = 1;
+        mouse_qtd->alt_next_qtd = 1;
         mouse_qtd->token = (mouse_toggle << 31) | (max_packet_size << 16) | (3 << 10) | (1 << 8) | (1 << 7);
         mouse_qtd->buffer[0] = (uint32_t)VIRT_TO_PHYS(mouse_data_buf);
+        
+        // Re-link to QH
         mouse_qh->next_qtd = (uint32_t)VIRT_TO_PHYS(mouse_qtd);
     }
 }

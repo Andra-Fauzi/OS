@@ -79,6 +79,18 @@ typedef struct fat_dir_entry {
 } __attribute__((packed)) fat_dir_entry_t;
 */
 
+// long file name
+typedef struct fat_dir_entry_long {
+	uint8_t order;
+	uint16_t first_5_chars[5];
+	uint8_t attribute;
+	uint8_t type;
+	uint8_t checksum;
+	uint16_t next_6_chars[3];
+	uint16_t always0; // always 0
+	uint16_t last_2_chars[2];
+} __attribute__((packed)) fat_dir_entry_long_t;
+
 typedef struct fat_dir_entry {
     char file_name[11];             // 8 bytes name, 3 bytes extension
     uint8_t attribute_file;         // File attributes (ReadOnly, Hidden, Directory, etc.)
@@ -94,6 +106,29 @@ typedef struct fat_dir_entry {
     uint32_t size_file;             // File size in bytes
 } __attribute__((packed)) fat_dir_entry_t;
 
+typedef struct MBR {
+	uint8_t boot_code[440];
+	uint8_t disk_signature[4];
+	uint16_t reserved_1;
+	uint8_t partition_table[64];
+	uint16_t signature;
+} __attribute__((packed)) MBR_t;
+
+typedef struct partition_entry {
+	uint8_t bootable;
+	uint8_t CHS_start_head;
+	uint8_t CHS_start_sector_and_cylinder_low;
+	uint8_t CHS_start_cylinder_high;
+	uint8_t type;
+	uint8_t CHS_end_head;
+	uint8_t CHS_end_sector_and_cylinder_low;
+	uint8_t CHS_end_cylinder_high;
+	uint32_t LBA_start_sector;
+	uint32_t total_sectors;
+} __attribute__((packed)) partition_entry_t;
+
+void read_file(uint32_t active_first_cluster_entry);
 void fat_init();
 void listing_root_dir_print();
 void listing_dir_print(uint32_t active_cluster);
+fat_dir_entry_t *listing_root_dir(uint32_t *total);

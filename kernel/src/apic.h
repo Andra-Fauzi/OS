@@ -17,3 +17,4 @@ void isr_default_err(void *frame, uint64_t error);
 uint32_t lapic_read(uint32_t reg);
 void lapic_write(uint32_t reg, uint32_t val);
 void ioapic_enable_keyboard();
+void sleep(uint64_t ms);

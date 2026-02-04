@@ -43,6 +43,7 @@ run-hdd: $(IMAGE_NAME).hdd
 		-device ahci,id=ahci \
 		-device ide-hd,drive=disk,bus=ahci.0 \
 		-drive id=disk,if=none,file=$(IMAGE_NAME).hdd \
+		-device pci-ohci,id=ohci \
 		-device usb-ehci,id=ehci \
 		-device usb-mouse,bus=ehci.0 \
 		$(QEMUFLAGS)
