@@ -200,7 +200,7 @@ void kmain(void) {
 
     uint32_t total = 0;
     fat_init();
-    fat_dir_entry_t *entries = listing_root_dir(&total);
+    fat_dir_entry_t *entries = listing_root_dir(&total, NULL);
     printf("total entries %d\n", total);
     if(entries == NULL) {
 	    printf("ERROR disk\n");
@@ -214,11 +214,24 @@ void kmain(void) {
 	    printf("first cluster %d\n", entry->first_cluster_low);
     }
 
+    /*
     uint32_t table_value = FAT32_read(5);
     printf("table value %d\n", table_value);
     FAT32_write(5, 20);
     uint32_t new_table_value = FAT32_read(5);
     printf("new table value %d\n", new_table_value);
+    */
+
+    fat_dir_entry_t entry;
+    memset(&entry, 0, sizeof(fat_dir_entry_t));
+    
+    memcpy(&entry.file_name, "ANDRA", 5);
+    
+    listing_dir_print(6);
+
+    create_entry("/BOOT/LIMINE", &entry);
+
+    listing_dir_print(6);
 	
     // char *halo = (char *)malloc(sizeof(char) * 5, 4);
     // halo[0] = 'a';

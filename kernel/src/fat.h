@@ -3,6 +3,7 @@
 #include "ahci.h"
 #include "memory.h"
 #include "paging.h"
+#include "util.h"
 
 enum FatType {
 	FAT16,
@@ -131,8 +132,9 @@ void read_file(uint32_t active_first_cluster_entry);
 void fat_init();
 void listing_root_dir_print();
 void listing_dir_print(uint32_t active_cluster);
-fat_dir_entry_t *listing_root_dir(uint32_t *total);
 void FAT16_write(uint16_t active_cluster, uint16_t cluster);
 uint16_t FAT16_read(uint16_t active_cluster);
 uint32_t FAT32_read(uint32_t active_cluster);
 void FAT32_write(uint32_t active_cluster, uint32_t cluster);
+void create_entry(const char *path, fat_dir_entry_t *entry);
+fat_dir_entry_t *listing_root_dir(uint32_t *total_clusters, uint32_t *total_sectors);
