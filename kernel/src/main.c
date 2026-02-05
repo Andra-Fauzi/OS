@@ -211,7 +211,14 @@ void kmain(void) {
 	    if(entry->file_name[0] == 0) continue;
 	    if(entry->file_name[0] == 0xE5) continue;
 	    printf("nama file %s\n", entry->file_name);
+	    printf("first cluster %d\n", entry->first_cluster_low);
     }
+
+    uint32_t table_value = FAT32_read(5);
+    printf("table value %d\n", table_value);
+    FAT32_write(5, 20);
+    uint32_t new_table_value = FAT32_read(5);
+    printf("new table value %d\n", new_table_value);
 	
     // char *halo = (char *)malloc(sizeof(char) * 5, 4);
     // halo[0] = 'a';

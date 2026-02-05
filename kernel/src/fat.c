@@ -78,6 +78,32 @@ void fat_init() {
 	}
 }
 
+void FAT16_write(uint16_t active_cluster, uint16_t cluster) {
+	uint16_t sector_size = fat->bytes_per_sector;
+	uint8_t FAT_table[sector_size];
+	uint32_t fat_offset = active_cluster * 2;
+	uint32_t fat_sector = first_fat_sector + (fat_offset / sector_size);
+	uint32_t ent_offset = fat_offset % sector_size;
+
+	if (fat_sector >= fat_size) {
+    		printf("Error: Try reading outside the FAT table!\n");
+    		return; // Cancel reading
+	}
+
+
+	uint16_t *buf = (uint16_t *)malloc(sizeof(uint16_t) * 256, 4);
+	memset(buf, 0, 512);
+	ahci_read(sataport, OFFSET_FAT + fat_sector, 0, 1, (uint16_t *)buf);
+
+	memcpy(FAT_table, buf, sector_size);
+
+	FAT_table[ent_offset] = cluster;
+
+	memcpy(buf, FAT_table, sector_size);
+
+	free(buf);
+}
+
 uint16_t FAT16_read(uint16_t active_cluster) {
 	uint16_t sector_size = fat->bytes_per_sector;
 	uint8_t FAT_table[sector_size];
@@ -117,7 +143,7 @@ uint32_t FAT32_read(uint32_t active_cluster) {
 	}
 
 
-	uint16_t *buf = (uint16_t *)malloc(sizeof(uint16_t) * 256, 4);
+	uint16_t *buf = (uint16_t *)malloc(sector_size, 4);
 	memset(buf, 0, 512);
 	ahci_read(sataport, OFFSET_FAT + fat_sector, 0, 1, (uint16_t *)buf);
 
@@ -130,6 +156,34 @@ uint32_t FAT32_read(uint32_t active_cluster) {
 	free(buf);
 
 	return table_value;
+}
+
+void FAT32_write(uint32_t active_cluster, uint32_t cluster) {
+	uint16_t sector_size = fat->bytes_per_sector;
+	uint8_t FAT_table[sector_size];
+	uint32_t fat_offset = active_cluster * 4;
+	uint32_t fat_sector = first_fat_sector + (fat_offset / sector_size);
+	uint32_t ent_offset = fat_offset % sector_size;
+	// Use variables already taken from boot sector
+	if (fat_sector >= fat_size) {
+    		printf("Error: Try reading outside the FAT table!\n");
+    		return; // Cancel reading
+	}
+
+
+	uint16_t *buf = (uint16_t *)malloc(sector_size, 4);
+	memset(buf, 0, 512);
+	ahci_read(sataport, OFFSET_FAT + fat_sector, 0, 1, (uint16_t *)buf);
+
+	memcpy(FAT_table, buf, sector_size);
+
+	*(uint32_t *)&FAT_table[ent_offset] = cluster & 0x0FFFFFFF;
+
+	memcpy(buf, FAT_table, sector_size);
+
+	ahci_write(sataport, OFFSET_FAT + fat_sector, 0, 1, buf);
+
+	free(buf);
 }
 
 uint32_t cluster_to_LBA(uint32_t cluster) {
@@ -145,7 +199,7 @@ void listing_root_dir_print() {
 	if(fat_type == FAT32) {
 		uint32_t table_value = root_cluster_32;
 		do {
-			for(uint32_t sector = 0; sector < FAT->sectors_per_cluster; sector++){
+			for(uint32_t sector = 0; sector < fat->sectors_per_cluster; sector++){
 				fat_dir_entry_t *entries = (fat_dir_entry_t *)buf;
 				memset(buf, 0, 512);
 				ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value) + sector, 0, 1, (uint16_t *)buf);
@@ -204,7 +258,7 @@ void listing_dir_print(uint32_t active_cluster) {
 	if(fat_type == FAT32) {
 		uint32_t table_value = active_cluster;
 		do {
-			for(uint32_t sector = 0; sector < FAT->sectors_per_cluster; sector++) {
+			for(uint32_t sector = 0; sector < fat->sectors_per_cluster; sector++) {
 				memset(buf, 0, 512);
 				ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value) + sector, 0, 1, (uint16_t *)buf);
 				fat_dir_entry_t *entries = (fat_dir_entry_t *)buf;
@@ -249,9 +303,9 @@ void listing_dir_print(uint32_t active_cluster) {
 	else if(fat_type == FAT16) {
 		uint32_t table_value = active_cluster;
 		do {
-			for(uint32_t sector = 0; sector < FAT->sectors_per_cluster; sector++) {
+			for(uint32_t sector = 0; sector < fat->sectors_per_cluster; sector++) {
 				memset(buf, 0, 512);
-				bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, 1, (uint16_t *)buf);
+				bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value) + sector, 0, 1, (uint16_t *)buf);
 				if(success == false) {
 					printf("failed to read disk");
 					return;
@@ -271,6 +325,7 @@ void listing_dir_print(uint32_t active_cluster) {
 				table_value = FAT16_read(table_value);
 			}
 		} while(table_value < 0xFFF8);
+	}
 	free(buf);
 }
 
@@ -282,9 +337,9 @@ fat_dir_entry_t *listing_root_dir(uint32_t *total) {
 			table_value = FAT32_read(table_value);
 			total_dir_clusters =+ 1;
 		}
-		uint16_t *buf = (uint16_t *)malloc(256 * sizeof(uint16_t) * total_dir_clusters, 4);
+		uint16_t *buf = (uint16_t *)malloc(256 * sizeof(uint16_t) * total_dir_clusters * fat->sectors_per_cluster, 4);
 		table_value = root_cluster_32;
-		bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, total_dir_clusters, (uint16_t *)buf);
+		bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, total_dir_clusters * fat->sectors_per_cluster, (uint16_t *)buf);
 		if(success == false) {
 			printf("failed to read disk\n");
 			return NULL;
@@ -294,21 +349,15 @@ fat_dir_entry_t *listing_root_dir(uint32_t *total) {
 	}
 	else if(fat_type == FAT16) {
 		uint16_t *buf = (uint16_t *)malloc(256 * sizeof(uint16_t) * root_dir_sectors, 4);
-		for(uint32_t sector = 0; sector < root_dir_sectors; sector++) {
-			memset(buf, 0, 512);
-			ahci_read(sataport, OFFSET_FAT + first_root_dir_sector + sector, 0, 1, (uint16_t *)buf);
-			fat_dir_entry_t *entries = (fat_dir_entry_t *)buf;
-			for(int i = 0; i < ENTRIES_SIZE; i++) {
-				fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[i];
-				if(entry->file_name[0] == 0) continue;
-				if(entry->file_name[0] == 0xE5) continue;
-				printf("nama file %s\n", entry->file_name);
-				printf("first cluster high %d\n", entry->first_cluster_high);
-				printf("first cluster low %d\n", entry->first_cluster_low);
-			}
+		bool success = ahci_read(sataport, OFFSET_FAT + first_root_dir_sector, 0, root_dir_sectors, (uint16_t *)buf);
+		if(success == false) {
+			printf("failed to read disk\n");
+			return NULL;
 		}
 		*total = root_dir_sectors;
+		return (fat_dir_entry_t *)buf;
 	}
+	return NULL;
 }
 
 fat_dir_entry_t *listing_dir(uint32_t *total, uint32_t cluster) {
@@ -320,7 +369,8 @@ fat_dir_entry_t *listing_dir(uint32_t *total, uint32_t cluster) {
 			total_dir_clusters =+ 1;
 		}
 		table_value = cluster;
-		bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, total_dir_clusters * FAT->sectors_per_cluster, (uint16_t *)buf);
+		uint16_t *buf = (uint16_t *)malloc(256 * sizeof(uint16_t) * total_dir_clusters, 4);
+		bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, total_dir_clusters * fat->sectors_per_cluster, (uint16_t *)buf);
 		if(success == false) {
 			printf("failed to read disk\n");
 			return NULL;
@@ -328,11 +378,25 @@ fat_dir_entry_t *listing_dir(uint32_t *total, uint32_t cluster) {
 		*total = total_dir_clusters;
 	}
 	else if(fat_type == FAT16) {
+		uint32_t table_value = cluster;
+		uint32_t total_dir_clusters = 0;
+		while(table_value < 0xFFF8) {
+			table_value = FAT16_read(table_value);
+			total_dir_clusters =+ 1;
+		}
+		table_value = cluster;
+		uint16_t *buf = (uint16_t *)malloc(256 * sizeof(uint16_t) * total_dir_clusters, 4);
+		bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, total_dir_clusters * fat->sectors_per_cluster, (uint16_t *)buf);
+		if(success == false) {
+			printf("failed to read disk\n");
+			return NULL;
+		}
+		*total = total_dir_clusters;
 	}
 }
 
-void read_clusters(uint32_t active_first_cluster_entry, uint32_t size) {
-	uint16_t *buf = (uint16_t *)malloc(sizeof(uint16_t) * 256, 4);
+char *read_clusters(uint32_t active_first_cluster_entry, uint32_t size) {
+	uint16_t *buf = (uint16_t *)malloc(size, 4);
 	printf("start first cluster entry %d\n", active_first_cluster_entry);
 	uint32_t table_value = active_first_cluster_entry;
 	if(fat_type == FAT32) {
@@ -340,11 +404,11 @@ void read_clusters(uint32_t active_first_cluster_entry, uint32_t size) {
 		do {
 			char buf_data[512];
 			memset(buf_data,0,512);
-			bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, FAT->sectors_per_cluster, (uint16_t *)buf);
+			bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, fat->sectors_per_cluster, (uint16_t *)buf);
 			memcpy(buf_data, buf, 512);
 			if(success == false) {
 				printf("failed to read disk");
-				return;
+				return NULL;
 			}
 			printf("%s", buf_data);
 			table_value = FAT32_read(table_value);
@@ -354,13 +418,20 @@ void read_clusters(uint32_t active_first_cluster_entry, uint32_t size) {
 		do {
 			char buf_data[512];
 			memset(buf_data,0,512);
-			bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, FAT->sectors_per_cluster, (uint16_t *)buf);
+			bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, fat->sectors_per_cluster, (uint16_t *)buf);
 			if(success == false) {
 				printf("failed to read disk");
-				return;
+				return NULL;
 			}
 			memcpy(buf_data, buf, 512);
 			table_value = FAT16_read(table_value);
 		}while(table_value < 0xFFF8);
 	}
 }
+
+void write_cluster(uint32_t active_first_cluster_entry, uint32_t cluster) {
+}
+
+// this will be wrap function for function above
+
+
