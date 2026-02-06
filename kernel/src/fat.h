@@ -138,3 +138,5 @@ uint32_t FAT32_read(uint32_t active_cluster);
 void FAT32_write(uint32_t active_cluster, uint32_t cluster);
 void create_entry(const char *path, fat_dir_entry_t *entry);
 fat_dir_entry_t *listing_root_dir(uint32_t *total_clusters, uint32_t *total_sectors);
+void edit_entry(const char *path, fat_dir_entry_t *the_entry, fat_dir_entry_t *entry_input);
+void delete_entry(const char *path, fat_dir_entry_t *the_entry);

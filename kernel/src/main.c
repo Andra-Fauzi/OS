@@ -222,15 +222,25 @@ void kmain(void) {
     printf("new table value %d\n", new_table_value);
     */
 
-    fat_dir_entry_t entry;
-    memset(&entry, 0, sizeof(fat_dir_entry_t));
+    fat_dir_entry_t entry1;
+    memset(&entry1, 0, sizeof(fat_dir_entry_t));
     
-    memcpy(&entry.file_name, "ANDRA", 5);
+    memcpy(&entry1.file_name, "ANDRA", 5);
+
+    fat_dir_entry_t entry2;
+    memset(&entry2, 0, sizeof(fat_dir_entry_t));
+    
+    memcpy(&entry2.file_name, "ANDRA", 5);
+    entry2.first_cluster_low = 5;
     
     listing_dir_print(6);
 
-    create_entry("/BOOT/LIMINE", &entry);
+    create_entry("/BOOT/LIMINE", &entry1);
 
+    listing_dir_print(6);
+    edit_entry("/BOOT/LIMINE", &entry1, &entry2);
+    listing_dir_print(6);
+    delete_entry("/BOOT/LIMINE", &entry2);
     listing_dir_print(6);
 	
     // char *halo = (char *)malloc(sizeof(char) * 5, 4);

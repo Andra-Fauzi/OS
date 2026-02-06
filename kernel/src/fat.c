@@ -433,8 +433,7 @@ char *read_clusters(uint32_t active_first_cluster_entry, uint32_t size) {
 
 // this will be wrap function for function above
 
-void create_entry(const char *path, fat_dir_entry_t *entry_input) {
-	printf("creating entry\n");
+fat_dir_entry_t *get_entry_with_path(const char *path, uint32_t *_cluster, uint32_t *_total_clusters) {
 	int length = strlen(path);
 	char str[length + 1];
 	memcpy(str, path, length);
@@ -446,16 +445,9 @@ void create_entry(const char *path, fat_dir_entry_t *entry_input) {
 	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
 	const uint32_t TOTAL_SECTORS = total_root_clusters * fat->sectors_per_cluster;
 	if(token == NULL) {
-		for(uint32_t i = 0; i < TOTAL_SECTORS; i++) {
-			for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
-				fat_dir_entry_t *entry = (fat_dir_entry_t *)&root_entries[(i * ENTRIES_TOTAL)+ j];
-				if(entry->file_name[0] == 0) {
-					root_entries[(i * ENTRIES_TOTAL) + j] = *entry_input;
-					ahci_write(sataport, OFFSET_FAT + cluster_to_LBA(root_cluster_32), 0, TOTAL_SECTORS, root_entries);
-					return;
-				}
-			}
-		}
+		*_cluster = root_cluster_32;
+		*_total_clusters = total_root_clusters;
+		return root_entries;
 	}
 	else {
 		// first check the root
@@ -481,14 +473,16 @@ void create_entry(const char *path, fat_dir_entry_t *entry_input) {
 						name[11] = '\0';
 						goto found;
 					} else {
-						// if path have no token, go to create
-						goto create;
+						// if path have no token, return the entries
+						*_cluster = cluster;
+						*_total_clusters = total_clusters;
+						return entries;
 					}
 				}
 			}
 		}
 		printf("not found\n");
-		return;
+		return NULL;
 found:
 		if(token != NULL) {
 			for(uint32_t i = 0; i < (total_clusters * fat->sectors_per_cluster); i++) {
@@ -506,25 +500,90 @@ found:
 							name[11] = '\0';
 							goto found;
 						} else {
-							// if path have no token, go to create
-							goto create;
+							// if path have no token, return the entries
+							*_cluster = cluster;
+							*_total_clusters = total_clusters;
+							return entries;
 						}
 					}
 				}
 			}
 		}
-		printf("not found\n");
+	}
+	printf("not found\n");
+	return NULL;
+
+}
+
+void create_entry(const char *path, fat_dir_entry_t *entry_input) {
+	printf("creating entry\n");
+	uint64_t cluster = 0;
+	uint32_t total_clusters = 0;
+	fat_dir_entry_t *entries = get_entry_with_path(path, &cluster, &total_clusters);
+	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
+	if(entries == NULL) {
+		printf("the entries is not found\n");
 		return;
-create:
-		for(uint32_t i = 0; i < (total_clusters * fat->sectors_per_cluster); i++) {
-			for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
-					fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[(i * ENTRIES_TOTAL) + j];
-					if(entry->file_name[0] == 0) {
-						entries[(i * ENTRIES_TOTAL) + j] = *entry_input;
-						ahci_write(sataport, OFFSET_FAT + cluster_to_LBA(cluster), 0, (total_clusters * fat->sectors_per_cluster), entries);
-						return;
-					}
+	}
+	for(uint32_t i = 0; i < (total_clusters * fat->sectors_per_cluster); i++) {
+		for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
+			fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[(i * ENTRIES_TOTAL) + j];
+			if(entry->file_name[0] == 0) {
+				entries[(i * ENTRIES_TOTAL) + j] = *entry_input;
+				goto write;
+
 			}
 		}
 	}
+	return;
+write:
+	ahci_write(sataport, OFFSET_FAT + cluster_to_LBA(cluster), 0, (total_clusters * fat->sectors_per_cluster), entries);
+}
+
+void edit_entry(const char *path, fat_dir_entry_t *the_entry, fat_dir_entry_t *entry_input) {
+	printf("Edit entry\n");
+	uint64_t cluster = 0;
+	uint32_t total_clusters = 0;
+	fat_dir_entry_t *entries = get_entry_with_path(path, &cluster, &total_clusters);
+	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
+	if(entries == NULL) {
+		printf("the entries is not found\n");
+		return;
+	}
+	for(uint32_t i = 0; i < (total_clusters * fat->sectors_per_cluster); i++) {
+		for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
+			fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[(i * ENTRIES_TOTAL) + j];
+			if(memcmp(entry, the_entry, sizeof(fat_dir_entry_t)) == 0) {
+				entries[(i * ENTRIES_TOTAL) + j] = *entry_input;
+				goto write;
+
+			}
+		}
+	}
+	return;
+write:
+	ahci_write(sataport, OFFSET_FAT + cluster_to_LBA(cluster), 0, (total_clusters * fat->sectors_per_cluster), entries);
+}
+
+void delete_entry(const char *path, fat_dir_entry_t *the_entry) {
+	printf("Edit entry\n");
+	uint64_t cluster = 0;
+	uint32_t total_clusters = 0;
+	fat_dir_entry_t *entries = get_entry_with_path(path, &cluster, &total_clusters);
+	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
+	if(entries == NULL) {
+		printf("the entries is not found\n");
+		return;
+	}
+	for(uint32_t i = 0; i < (total_clusters * fat->sectors_per_cluster); i++) {
+		for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
+			fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[(i * ENTRIES_TOTAL) + j];
+			if(memcmp(entry, the_entry, sizeof(fat_dir_entry_t)) == 0) {
+				memset((void *)&entries[(i * ENTRIES_TOTAL) + j], 0, sizeof(fat_dir_entry_t));
+				goto write;
+			}
+		}
+	}
+write:
+	ahci_write(sataport, OFFSET_FAT + cluster_to_LBA(cluster), 0, (total_clusters * fat->sectors_per_cluster), (uint16_t *)entries);
 }
