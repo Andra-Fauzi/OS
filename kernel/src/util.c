@@ -3,6 +3,14 @@
 void strcat(char *destination, char *source) {
 }
 
+void strcpy(char *destination, char *source) {
+	while(*source != '\0' && *source) {
+		*destination = *source;
+		destination++;
+		source++;
+	}
+}
+
 int strlen(char *str) {
 	int i = 0;
 	while(*str != '\0' && *str) {
@@ -61,5 +69,24 @@ char *strtok(char *str, const char *delim) {
 
 		last_pos++;
 	}
+
 	return token_start;
+}
+
+char *strrchr(const char *s, int c)
+{
+    const char *last = NULL;
+    do {
+        if (*s == (char)c)
+            last = s;
+    } while (*s++);
+    return (char *)last;
+}
+
+int strcmp(const char *s1, const char *s2) {
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(const unsigned char*)s1 - *(const unsigned char*)s2;
 }

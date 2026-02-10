@@ -128,7 +128,6 @@ typedef struct partition_entry {
 	uint32_t total_sectors;
 } __attribute__((packed)) partition_entry_t;
 
-void read_file(uint32_t active_first_cluster_entry);
 void fat_init();
 void listing_root_dir_print();
 void listing_dir_print(uint32_t active_cluster);
@@ -136,7 +135,12 @@ void FAT16_write(uint16_t active_cluster, uint16_t cluster);
 uint16_t FAT16_read(uint16_t active_cluster);
 uint32_t FAT32_read(uint32_t active_cluster);
 void FAT32_write(uint32_t active_cluster, uint32_t cluster);
-void create_entry(const char *path, fat_dir_entry_t *entry);
 fat_dir_entry_t *listing_root_dir(uint32_t *total_clusters, uint32_t *total_sectors);
-void edit_entry(const char *path, fat_dir_entry_t *the_entry, fat_dir_entry_t *entry_input);
-void delete_entry(const char *path, fat_dir_entry_t *the_entry);
+fat_dir_entry_t *listing_dir(uint32_t *total_clusters, uint32_t cluster);
+fat_dir_entry_t *get_entries_with_path(const char *path, uint32_t *_cluster, uint32_t *_total_clusters);
+fat_dir_entry_t *get_entry_with_path(const char *path, uint32_t *_cluster);
+void create_entry(const char *path, fat_dir_entry_t *entry_input);
+void write_data(const char *path, fat_dir_entry_t *the_entry, char *data, uint32_t size);
+char *read_data(const char *path, fat_dir_entry_t *the_entry, uint32_t *size);
+char *read_data_direct_path(const char *path, uint32_t *size);
+void write_data_direct_path(const char *path, char *data, uint32_t size);

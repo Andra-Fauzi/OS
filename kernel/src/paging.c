@@ -49,7 +49,7 @@ uint64_t *get_next_level(uint64_t *current_level, size_t entry_idx) {
 	uint64_t val = current_level[entry_idx];
 	print_str("Entry value: ");
 	print_hex(val);
-	print('\n');
+	write_terminal('\n');
 
         while (1) asm volatile("hlt");
     }

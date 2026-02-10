@@ -7,6 +7,9 @@
 #include "terminal.h"
 #include "ahci.h"
 #include "paging.h"
+#include "vfs.h"
+#include "vfs_terminal.h"
+#include "fat_adapter.h"
 
 // Set the base revision to 4, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
@@ -140,6 +143,9 @@ void kmain(void) {
     idt_init();
     print_str("IDT Loaded\n");
 
+    isr_install();
+    print_str("ISR Installed\n");
+
     pic_disable();
     print_str("PIC Disabled\n");
 
@@ -200,19 +206,6 @@ void kmain(void) {
 
     uint32_t total = 0;
     fat_init();
-    fat_dir_entry_t *entries = listing_root_dir(&total, NULL);
-    printf("total entries %d\n", total);
-    if(entries == NULL) {
-	    printf("ERROR disk\n");
-	    while(1);
-    }
-    for(uint32_t i = 0; i < ((512 / 32) * total); i++) {
-	    fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[i];
-	    if(entry->file_name[0] == 0) continue;
-	    if(entry->file_name[0] == 0xE5) continue;
-	    printf("nama file %s\n", entry->file_name);
-	    printf("first cluster %d\n", entry->first_cluster_low);
-    }
 
     /*
     uint32_t table_value = FAT32_read(5);
@@ -221,28 +214,86 @@ void kmain(void) {
     uint32_t new_table_value = FAT32_read(5);
     printf("new table value %d\n", new_table_value);
     */
+    // extern uint32_t fat_size;
+    // printf("fat size is %d\n", fat_size);
 
-    fat_dir_entry_t entry1;
-    memset(&entry1, 0, sizeof(fat_dir_entry_t));
+    fat_dir_entry_t entry;
+    memset(&entry, 0, sizeof(fat_dir_entry_t));
+    memset(&entry.file_name, ' ', 11);
+    entry.file_name[0] = 'T';
+    entry.file_name[1] = 'E';
+    entry.file_name[2] = 'S';
+    entry.file_name[3] = 'T';
+    entry.attribute_file = 0x20;
+    entry.first_cluster_low = 0;
+    entry.first_cluster_high = 0;
+    entry.size_file = 0;
+
+    // create_entry("/", &entry);
+
+    // write_data("/", &entry, "Hello World!", 11);
+    // write_data("/", &entry, "Hello ANDRA!", 11);
+
+    listing_root_dir_print();
+
+    // VFS Integration
+    vfs_init();
+    fs_operations_t *fat_ops = fat_get_operations();
+    vfs_mount("/", "disk0", "fat32", fat_ops);
+    vfs_mount("/dev/sda", "/", "fat32", fat_ops);
     
-    memcpy(&entry1.file_name, "ANDRA", 5);
+    // Terminal VFS
+    vfs_mount("/dev/tty", "terminal", "tty", vfs_terminal_get_ops());
+    vfs_mount("/dev/tty", "/", "fat32", fat_ops);
 
-    fat_dir_entry_t entry2;
-    memset(&entry2, 0, sizeof(fat_dir_entry_t));
-    
-    memcpy(&entry2.file_name, "ANDRA", 5);
-    entry2.first_cluster_low = 5;
-    
-    listing_dir_print(6);
+    // Test VFS Terminal
+    printf("Testing Terminal VFS (Type something and press Enter)...\n");
+    int fd_term = vfs_open("/dev/tty", O_RDWR);
+    if(fd_term >= 0) {
+        char buf[128];
+        memset(buf, 0, 128);
+        vfs_write(fd_term, "Enter text: ", 12);
+        
+        int read_count = vfs_read(fd_term, buf, 127); // Leave room for null terminator
+        if(read_count > 0) {
+            // Remove newline if present for cleaner output
+            if(buf[read_count-1] == '\n') buf[read_count-1] = '\0';
+            
+            vfs_write(fd_term, "You typed: ", 11);
+            vfs_write(fd_term, buf, read_count);
+            vfs_write(fd_term, "\n", 1);
+        }
+        vfs_close(fd_term);
+    } else {
+        printf("Failed to open terminal VFS\n");
+    }
 
-    create_entry("/BOOT/LIMINE", &entry1);
+    // Test VFS Open/Write/Read (FAT)
+    printf("Testing VFS...\n");
+    int fd = vfs_open("/EFI/TEST", O_CREAT | O_RDWR);
+    if (fd >= 0) {
+        printf("VFS Open Success: fd=%d\n", fd);
+        char *msg = "Hello VFS World!";
+        vfs_write(fd, msg, 16);
+        vfs_close(fd);
+        
+        // Read back
+        fd = vfs_open("/dev/sda/EFI/TEST", O_RDONLY);
+        if (fd >= 0) {
+            char buf[32];
+            memset(buf, 0, 32);
+            vfs_read(fd, buf, 32);
+            printf("VFS Read: %s\n", buf);
+            vfs_close(fd);
+        }
+    } else {
+        printf("VFS Open Failed\n");
+    }
 
-    listing_dir_print(6);
-    edit_entry("/BOOT/LIMINE", &entry1, &entry2);
-    listing_dir_print(6);
-    delete_entry("/BOOT/LIMINE", &entry2);
-    listing_dir_print(6);
-	
+    // volatile uint64_t a = 1;
+    // volatile uint64_t b = 0;
+    // a = a / b;          // 💥 trigger #DE
+
     // char *halo = (char *)malloc(sizeof(char) * 5, 4);
     // halo[0] = 'a';
     // halo[1] = 'n';

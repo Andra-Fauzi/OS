@@ -166,11 +166,21 @@ void terminal_scroll() {
 
 }
 
-void print(char c) {
-        if(c == '\n') {
-            terminal_x = 0;
-            terminal_y += 16;
+void write_terminal(char c) {
+    if(c == '\n') {
+        terminal_x = 0;
+        terminal_y += FONT_HEIGHT;
+    }
+    else if(c == '\b') {
+        if(terminal_x > 0) {
+            terminal_x -= FONT_WIDTH;
+            for(uint8_t y = 0; y < FONT_HEIGHT; y++) {
+				for(uint8_t x = 0; x < FONT_WIDTH; x++) {
+					framebuffer_ptr[(y + terminal_y) * (framebuffer_pitch / 4) + (x + terminal_x)] = 0x0;
+				}
+			}
         }
+    }
 	else {
 		for(uint8_t y = 0; y < FONT_HEIGHT; y++) {
 			uint8_t line = font8x16[c][y];
@@ -194,7 +204,7 @@ void print(char c) {
 
 void print_str(char *str) {
 	while(*str && *str != '\0') {
-		print(*str);
+		write_terminal(*str);
 		str++;
 	}
 }
@@ -205,12 +215,12 @@ void print_uint(uint64_t val) {
     }
     // Print the last digit
     char c = (char)((val % 10) + '0');
-    print(c);
+    write_terminal(c);
 }
 
 void print_int(int64_t val) {
     if (val < 0) {
-        print('-');
+        write_terminal('-');
         val = -val;
     }
     print_uint((uint64_t)val);
@@ -238,7 +248,7 @@ void print_hex(uint64_t n) {
 	char hex[] = "0123456789ABCDEF";
 	print_str("0x");
 	for(int i = 60; i >= 0; i -= 4) {
-		print(hex[(n >> i) & 0xF]);
+		write_terminal(hex[(n >> i) & 0xF]);
 	}
 }
 
@@ -259,7 +269,7 @@ void printf(char *str, ...) {
 		}
 		else if(*str == '%' && *(str + 1) == 'c') {
 			char val = va_arg(args, int);
-			print(val);
+			write_terminal(val);
 			str += 2;
 		}
 		else if(*str == '%' && *(str + 1) == 's') {
@@ -281,7 +291,7 @@ void printf(char *str, ...) {
 		}
 		*/
 		else {
-			print(*str);
+			write_terminal(*str);
 			str++;
 		}
 	}

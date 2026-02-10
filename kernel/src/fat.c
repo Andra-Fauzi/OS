@@ -101,6 +101,8 @@ void FAT16_write(uint16_t active_cluster, uint16_t cluster) {
 
 	memcpy(buf, FAT_table, sector_size);
 
+	ahci_write(sataport, OFFSET_FAT + fat_sector, 0, 1, buf);
+
 	free(buf);
 }
 
@@ -207,7 +209,7 @@ void listing_root_dir_print() {
 					fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[i];
 					if(entry->file_name[0] == 0) continue;
 					if(entry->file_name[0] == 0xE5) continue;
-					if(entry->attribute_file & 0x0F == 0x0F) {
+					if((entry->attribute_file & 0x0F) == 0x0F) {
 						fat_dir_entry_long_t *long_entry = (fat_dir_entry_long_t *)&entries[i];
 						printf("THIS IS LONG ENTRY\n");
 						for(int j = 0; j < 5; j++) {
@@ -266,7 +268,7 @@ void listing_dir_print(uint32_t active_cluster) {
 					fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[i];
 					if(entry->file_name[0] == 0) continue;
 					if(entry->file_name[0] == 0xE5) continue;
-					if(entry->attribute_file & 0x0F == 0x0F) {
+					if((entry->attribute_file & 0x0F) == 0x0F) {
 						fat_dir_entry_long_t *long_entry = (fat_dir_entry_long_t *)&entries[i];
 						printf("THIS IS LONG ENTRY\n");
 						printf("5 chars\n");
@@ -335,7 +337,7 @@ fat_dir_entry_t *listing_root_dir(uint32_t *total_clusters, uint32_t *total_sect
 		uint32_t total_dir_clusters = 0;
 		while(table_value < 0x0FFFFFF8) {
 			table_value = FAT32_read(table_value);
-			total_dir_clusters =+ 1;
+			total_dir_clusters += 1;
 		}
 		uint16_t *buf = (uint16_t *)malloc(256 * sizeof(uint16_t) * total_dir_clusters * fat->sectors_per_cluster, 4);
 		table_value = root_cluster_32;
@@ -366,7 +368,7 @@ fat_dir_entry_t *listing_dir(uint32_t *total_clusters, uint32_t cluster) {
 		uint32_t total_dir_clusters = 0;
 		while(table_value < 0x0FFFFFF8) {
 			table_value = FAT32_read(table_value);
-			total_dir_clusters =+ 1;
+			total_dir_clusters += 1;
 		}
 		table_value = cluster;
 		uint16_t *buf = (uint16_t *)malloc(256 * sizeof(uint16_t) * total_dir_clusters, 4);
@@ -383,7 +385,7 @@ fat_dir_entry_t *listing_dir(uint32_t *total_clusters, uint32_t cluster) {
 		uint32_t total_dir_clusters = 0;
 		while(table_value < 0xFFF8) {
 			table_value = FAT16_read(table_value);
-			total_dir_clusters =+ 1;
+			total_dir_clusters += 1;
 		}
 		table_value = cluster;
 		uint16_t *buf = (uint16_t *)malloc(256 * sizeof(uint16_t) * total_dir_clusters, 4);
@@ -397,43 +399,9 @@ fat_dir_entry_t *listing_dir(uint32_t *total_clusters, uint32_t cluster) {
 	}
 }
 
-char *read_clusters(uint32_t active_first_cluster_entry, uint32_t size) {
-	uint16_t *buf = (uint16_t *)malloc(size, 4);
-	printf("start first cluster entry %d\n", active_first_cluster_entry);
-	uint32_t table_value = active_first_cluster_entry;
-	if(fat_type == FAT32) {
-		printf("start reading\n");
-		do {
-			char buf_data[512];
-			memset(buf_data,0,512);
-			bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, fat->sectors_per_cluster, (uint16_t *)buf);
-			memcpy(buf_data, buf, 512);
-			if(success == false) {
-				printf("failed to read disk");
-				return NULL;
-			}
-			printf("%s", buf_data);
-			table_value = FAT32_read(table_value);
-		}while(table_value < 0x0FFFFFF8);
-	}
-	else if(fat_type == FAT16) {
-		do {
-			char buf_data[512];
-			memset(buf_data,0,512);
-			bool success = ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value), 0, fat->sectors_per_cluster, (uint16_t *)buf);
-			if(success == false) {
-				printf("failed to read disk");
-				return NULL;
-			}
-			memcpy(buf_data, buf, 512);
-			table_value = FAT16_read(table_value);
-		}while(table_value < 0xFFF8);
-	}
-}
-
 // this will be wrap function for function above
 
-fat_dir_entry_t *get_entry_with_path(const char *path, uint32_t *_cluster, uint32_t *_total_clusters) {
+fat_dir_entry_t *get_entries_with_path(const char *path, uint32_t *_cluster, uint32_t *_total_clusters) {
 	int length = strlen(path);
 	char str[length + 1];
 	memcpy(str, path, length);
@@ -461,7 +429,7 @@ fat_dir_entry_t *get_entry_with_path(const char *path, uint32_t *_cluster, uint3
 		for(uint32_t i = 0; i < TOTAL_SECTORS; i++) {
 			for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
 				fat_dir_entry_t *entry = (fat_dir_entry_t *)&root_entries[(i * ENTRIES_TOTAL)+ j];
-				if(entry->attribute_file != 0x10) continue;
+				// if(entry->attribute_file != 0x10) continue;
 				if(memcmp(entry->file_name, name, 11) == 0) {
 					cluster = (entry->first_cluster_high << 16) | entry->first_cluster_low;
 					entries = listing_dir(&total_clusters, cluster);
@@ -515,11 +483,100 @@ found:
 
 }
 
+fat_dir_entry_t *get_entry_with_path(const char *path, uint32_t *_cluster) {
+	int length = strlen(path);
+	char str[length + 1];
+	memcpy(str, path, length);
+	str[length] = '\0';
+	char *token;
+	token = strtok(str, "/");
+	uint32_t total_root_clusters = 0; // total of clusters
+	fat_dir_entry_t *root_entries = listing_root_dir(&total_root_clusters, NULL);
+	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
+	const uint32_t TOTAL_SECTORS = total_root_clusters * fat->sectors_per_cluster;
+	if(token == NULL) {
+		for(uint32_t i = 0; i < TOTAL_SECTORS; i++) {
+			for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
+				fat_dir_entry_t *entry = (fat_dir_entry_t *)&root_entries[(i * ENTRIES_TOTAL)+ j];
+				// if(entry->attribute_file != 0x10) continue;
+				if(memcmp(entry->file_name, str, 11) == 0) {
+					uint32_t cluster = (entry->first_cluster_high << 16) | entry->first_cluster_low;
+					*_cluster = cluster;
+					return entry;
+				}
+			}
+		}
+		return NULL;
+	}
+	else {
+		// first check the root
+		char name[12];
+		memset(name, ' ', 12);
+		memcpy(name, token, strlen(token));
+		name[11] = '\0';
+		fat_dir_entry_t *entries;
+		uint32_t total_clusters	= 0;
+		uint32_t cluster = 0;
+		for(uint32_t i = 0; i < TOTAL_SECTORS; i++) {
+			for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
+				fat_dir_entry_t *entry = (fat_dir_entry_t *)&root_entries[(i * ENTRIES_TOTAL)+ j];
+				// if(entry->attribute_file != 0x10) continue;
+				if(memcmp(entry->file_name, name, 11) == 0) {
+					cluster = (entry->first_cluster_high << 16) | entry->first_cluster_low;
+					entries = listing_dir(&total_clusters, cluster);
+					token = strtok(NULL, "/");
+					// if path still have token, go to found
+					if(token != NULL) {
+						memset(name, ' ', 12);
+						memcpy(name, token, strlen(token));
+						name[11] = '\0';
+						goto found;
+					} else {
+						// if path have no token, return the entries
+						*_cluster = cluster;
+						return entry;
+					}
+				}
+			}
+		}
+		printf("not found\n");
+		return NULL;
+found:
+		if(token != NULL) {
+			for(uint32_t i = 0; i < (total_clusters * fat->sectors_per_cluster); i++) {
+				for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
+					fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[(i * ENTRIES_TOTAL) + j];
+					if(entry->attribute_file != 0x10) continue;
+					if(memcmp(entry->file_name, name, 11) == 0) {
+						cluster = (entry->first_cluster_high << 16) | entry->first_cluster_low;
+						entries = listing_dir(&total_clusters, cluster);
+						token = strtok(NULL, "/");
+						// if path still have token, go to found
+						if(token != NULL) {
+							memset(name, ' ', 12);
+							memcpy(name, token, strlen(token));
+							name[11] = '\0';
+							goto found;
+						} else {
+							// if path have no token, return the entries
+							*_cluster = cluster;
+							return entry;
+						}
+					}
+				}
+			}
+		}
+	}
+	printf("not found\n");
+	return NULL;
+
+}
+
 void create_entry(const char *path, fat_dir_entry_t *entry_input) {
 	printf("creating entry\n");
-	uint64_t cluster = 0;
+	uint32_t cluster = 0;
 	uint32_t total_clusters = 0;
-	fat_dir_entry_t *entries = get_entry_with_path(path, &cluster, &total_clusters);
+	fat_dir_entry_t *entries = get_entries_with_path(path, &cluster, &total_clusters);
 	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
 	if(entries == NULL) {
 		printf("the entries is not found\n");
@@ -529,8 +586,30 @@ void create_entry(const char *path, fat_dir_entry_t *entry_input) {
 		for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
 			fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[(i * ENTRIES_TOTAL) + j];
 			if(entry->file_name[0] == 0) {
-				entries[(i * ENTRIES_TOTAL) + j] = *entry_input;
-				goto write;
+			// Cari cluster kosong mulai dari cluster 2
+			uint32_t cluster_index = 2;
+			uint32_t table_value = FAT32_read(cluster_index);
+			
+			// Cari cluster yang kosong (FAT entry = 0)
+			while(table_value != 0) {
+				cluster_index++;
+				if(cluster_index >= 0x0FFFFFF7) {
+					printf("the table is full\n");
+					return;
+				}
+				table_value = FAT32_read(cluster_index);
+			}
+			
+			// Alokasi cluster yang ditemukan
+			FAT32_write(cluster_index, 0x0FFFFFFF);  // Mark as end-of-chain
+			
+			// Set cluster di entry
+			entry_input->first_cluster_low = cluster_index & 0xFFFF;
+			entry_input->first_cluster_high = (cluster_index >> 16) & 0xFFFF;
+			
+			// Salin entry ke directory
+			entries[(i * ENTRIES_TOTAL) + j] = *entry_input;
+			goto write;
 
 			}
 		}
@@ -542,9 +621,9 @@ write:
 
 void edit_entry(const char *path, fat_dir_entry_t *the_entry, fat_dir_entry_t *entry_input) {
 	printf("Edit entry\n");
-	uint64_t cluster = 0;
+	uint32_t cluster = 0;
 	uint32_t total_clusters = 0;
-	fat_dir_entry_t *entries = get_entry_with_path(path, &cluster, &total_clusters);
+	fat_dir_entry_t *entries = get_entries_with_path(path, &cluster, &total_clusters);
 	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
 	if(entries == NULL) {
 		printf("the entries is not found\n");
@@ -553,23 +632,25 @@ void edit_entry(const char *path, fat_dir_entry_t *the_entry, fat_dir_entry_t *e
 	for(uint32_t i = 0; i < (total_clusters * fat->sectors_per_cluster); i++) {
 		for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
 			fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[(i * ENTRIES_TOTAL) + j];
-			if(memcmp(entry, the_entry, sizeof(fat_dir_entry_t)) == 0) {
+			if(memcmp(entry->file_name, the_entry->file_name, 11) == 0) {
+				// printf("found \n");
 				entries[(i * ENTRIES_TOTAL) + j] = *entry_input;
 				goto write;
-
 			}
 		}
 	}
+	// printf("not found \n");
 	return;
 write:
 	ahci_write(sataport, OFFSET_FAT + cluster_to_LBA(cluster), 0, (total_clusters * fat->sectors_per_cluster), entries);
 }
 
+
 void delete_entry(const char *path, fat_dir_entry_t *the_entry) {
-	printf("Edit entry\n");
-	uint64_t cluster = 0;
+	printf("Delete entry\n");
+	uint32_t cluster = 0;
 	uint32_t total_clusters = 0;
-	fat_dir_entry_t *entries = get_entry_with_path(path, &cluster, &total_clusters);
+	fat_dir_entry_t *entries = get_entries_with_path(path, &cluster, &total_clusters);
 	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
 	if(entries == NULL) {
 		printf("the entries is not found\n");
@@ -586,4 +667,251 @@ void delete_entry(const char *path, fat_dir_entry_t *the_entry) {
 	}
 write:
 	ahci_write(sataport, OFFSET_FAT + cluster_to_LBA(cluster), 0, (total_clusters * fat->sectors_per_cluster), (uint16_t *)entries);
+}
+
+void write_data(const char *path, fat_dir_entry_t *the_entry, char *data, uint32_t size) {
+	printf("Write data\n");
+	uint32_t cluster = 0;
+	uint32_t total_clusters = 0;
+	fat_dir_entry_t *entries = get_entries_with_path(path, &cluster, &total_clusters);
+	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
+	if(entries == NULL) {
+		printf("the entries is not found\n");
+		return;
+	}
+	for(uint32_t i = 0; i < (total_clusters * fat->sectors_per_cluster); i++) {
+		for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
+			fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[(i * ENTRIES_TOTAL) + j];
+			// Match by name and cluster only (size can change)
+			if(memcmp(entry->file_name, the_entry->file_name, 11) == 0 &&
+			entry->first_cluster_low == the_entry->first_cluster_low &&
+			entry->first_cluster_high == the_entry->first_cluster_high) {
+				uint32_t entry_cluster = (entry->first_cluster_high << 16) | entry->first_cluster_low;
+				uint32_t table_value = entry_cluster;
+				uint32_t _size = size;
+				char *_data = data;
+				uint32_t sector = 0;
+				entry->size_file = size;
+				while(_size > 0) {
+					if(sector >= fat->sectors_per_cluster) {
+						sector = 0;
+						// Cek apakah cluster berikutnya sudah ada di chain
+						uint32_t next_cluster_value = FAT32_read(table_value);
+						if(next_cluster_value >= 0x0FFFFFF8) {
+							// Cluster berikutnya belum ada, alokasi yang baru
+							uint32_t next_cluster = table_value + 1;
+							while(FAT32_read(next_cluster) != 0) {
+								next_cluster++;
+							}
+							FAT32_write(table_value, next_cluster);
+							FAT32_write(next_cluster, 0x0FFFFFFF);
+							table_value = next_cluster;
+						} else {
+							// Cluster berikutnya sudah ada di chain
+							table_value = next_cluster_value;
+						}
+					}
+					char *buf = (char *)malloc(512, 4);
+					memset(buf, 0, 512);
+					if(_size < 512) {
+						memcpy(buf, _data, _size);
+						_size = 0;
+					} else {
+						memcpy(buf, _data, 512);
+						_data += 512;
+						_size -= 512;
+					}
+					ahci_write(sataport, OFFSET_FAT + cluster_to_LBA(table_value) + sector, 0, 1, (uint16_t *)buf);
+					free(buf);  // ✅ Free buffer setelah write
+					sector++;
+				}
+				// Update directory entry dengan size yang baru
+				entries[(i * ENTRIES_TOTAL) + j] = *entry;
+				ahci_write(sataport, OFFSET_FAT + cluster_to_LBA(cluster), 0, (total_clusters * fat->sectors_per_cluster), (uint16_t *)entries);
+				return;
+			}
+		}
+	}
+}
+
+char *read_data(const char *path, fat_dir_entry_t *the_entry, uint32_t *size) {
+	printf("Read data\n");
+	uint32_t cluster = 0;
+	uint32_t total_clusters = 0;
+	fat_dir_entry_t *entries = get_entries_with_path(path, &cluster, &total_clusters);
+	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
+	if(entries == NULL) {
+		printf("the entries is not found\n");
+		return NULL;
+	}
+	for(uint32_t i = 0; i < (total_clusters * fat->sectors_per_cluster); i++) {
+		for(uint32_t j = 0; j < ENTRIES_TOTAL; j++) {
+			fat_dir_entry_t *entry = (fat_dir_entry_t *)&entries[(i * ENTRIES_TOTAL) + j];
+			// Match by name and cluster only (size can change)
+			if(memcmp(entry->file_name, the_entry->file_name, 11) == 0 &&
+			   entry->first_cluster_low == the_entry->first_cluster_low &&
+			   entry->first_cluster_high == the_entry->first_cluster_high) {
+				uint32_t entry_cluster = (entry->first_cluster_high << 16) | entry->first_cluster_low;
+				uint32_t table_value = entry_cluster;
+				uint32_t _size = entry->size_file;
+				if(size != NULL) {
+					*size = _size;
+				}
+				char *buf = (char *)malloc(_size + 1, 4);  // +1 for null terminator
+				memset(buf, 0, _size + 1);
+				char *data = buf;
+				uint32_t sector = 0;
+				while(_size > 0) {
+					if(sector >= fat->sectors_per_cluster) {
+						sector = 0;
+						// Follow cluster chain untuk READ (tidak alokasi baru)
+						table_value = FAT32_read(table_value);
+						if(table_value >= 0x0FFFFFF8) {
+							// End of chain, tapi masih ada data yang belum dibaca
+							printf("Unexpected end of cluster chain\n");
+							free(buf);
+							return NULL;
+						}
+					}
+					char *temp_buf = (char *)malloc(512, 4);
+					ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value) + sector, 0, 1, (uint16_t *)temp_buf);
+					if(_size < 512) {
+						memcpy(data, temp_buf, _size);
+						_size = 0;
+					} else {
+						memcpy(data, temp_buf, 512);
+						_size -= 512;
+						data += 512;
+					}
+					free(temp_buf);  // ✅ Free temp buffer
+					sector++;
+				}
+				return buf;  // ✅ Return data yang benar
+			}
+		}
+	}
+	return NULL;
+}
+
+void write_data_direct_path(const char *path, char *data, uint32_t size) {
+	printf("Write data\n");
+	uint32_t cluster = 0;
+	uint32_t total_clusters = 0;
+	fat_dir_entry_t *entry = get_entry_with_path(path, &cluster);
+	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
+	if(entry == NULL) {
+		printf("the entries is not found\n");
+		return;
+	}
+	uint32_t entry_cluster = (entry->first_cluster_high << 16) | entry->first_cluster_low;
+	uint32_t table_value = entry_cluster;
+	uint32_t _size = size;
+	char *_data = data;
+	uint32_t sector = 0;
+	entry->size_file = size;
+	while(_size > 0) {
+		if(sector >= fat->sectors_per_cluster) {
+			sector = 0;
+			// Cek apakah cluster berikutnya sudah ada di chain
+			uint32_t next_cluster_value = FAT32_read(table_value);
+			if(next_cluster_value >= 0x0FFFFFF8) {
+				// Cluster berikutnya belum ada, alokasi yang baru
+				uint32_t next_cluster = table_value + 1;
+				while(FAT32_read(next_cluster) != 0) {
+					next_cluster++;
+				}
+				FAT32_write(table_value, next_cluster);
+				FAT32_write(next_cluster, 0x0FFFFFFF);
+				table_value = next_cluster;
+			} else {
+				// Cluster berikutnya sudah ada di chain
+				table_value = next_cluster_value;
+			}
+		}
+		char *buf = (char *)malloc(512, 4);
+		memset(buf, 0, 512);
+		if(_size < 512) {
+			memcpy(buf, _data, _size);
+			_size = 0;
+		} else {
+			memcpy(buf, _data, 512);
+			_data += 512;
+			_size -= 512;
+		}
+		// printf("buf is %s\n", buf);
+		ahci_write(sataport, OFFSET_FAT + cluster_to_LBA(table_value) + sector, 0, 1, (uint16_t *)buf);
+		free(buf);  // ✅ Free buffer setelah write
+		sector++;
+	}
+	if(strlen(path) >= 1) {
+		fat_dir_entry_t new_entry;
+		memcpy(&new_entry, entry, sizeof(fat_dir_entry_t));
+		new_entry.size_file = size;
+		char *new_path = (char *)malloc(strlen(path), 4);
+		memcpy(new_path, path, strlen(path));
+		char *tmp_buf = new_path;
+		tmp_buf += strlen(path);
+		int i = strlen(path);
+		while(*tmp_buf != '/' && i >= 0) {
+			*tmp_buf = 0;
+			tmp_buf--;
+			i--;
+		}
+		// printf("path is %s\n", new_path);
+		edit_entry(new_path, entry, &new_entry);
+		free(new_path);
+	} else {
+		fat_dir_entry_t new_entry;
+		memcpy(&new_entry, entry, sizeof(fat_dir_entry_t));
+		new_entry.size_file = size;
+		edit_entry(path, entry, &new_entry);
+	}
+}
+
+char *read_data_direct_path(const char *path, uint32_t *size) {
+	printf("Read data\n");
+	uint32_t cluster = 0;
+	uint32_t total_clusters = 0;
+	fat_dir_entry_t *entry = get_entry_with_path(path, &cluster);
+	const uint32_t ENTRIES_TOTAL = fat->bytes_per_sector / ENTRY_SIZE;
+	if(entry == NULL) {
+		printf("the entries is not found\n");
+		return NULL;
+	}
+	 uint32_t entry_cluster = (entry->first_cluster_high << 16) | entry->first_cluster_low;
+	 uint32_t table_value = entry_cluster;
+	 uint32_t _size = entry->size_file;
+	 if(size != NULL) {
+		 *size = _size;
+	 }
+	 char *buf = (char *)malloc(_size + 1, 4);  // +1 for null terminator
+	 memset(buf, 0, _size + 1);
+	 char *data = buf;
+	 uint32_t sector = 0;
+	 while(_size > 0) {
+		 if(sector >= fat->sectors_per_cluster) {
+			 sector = 0;
+			 // Follow cluster chain untuk READ (tidak alokasi baru)
+			 table_value = FAT32_read(table_value);
+			 if(table_value >= 0x0FFFFFF8) {
+				 // End of chain, tapi masih ada data yang belum dibaca
+				 printf("Unexpected end of cluster chain\n");
+				 free(buf);
+				 return NULL;
+			 }
+		 }
+		 char *temp_buf = (char *)malloc(512, 4);
+		 ahci_read(sataport, OFFSET_FAT + cluster_to_LBA(table_value) + sector, 0, 1, (uint16_t *)temp_buf);
+		 if(_size < 512) {
+			 memcpy(data, temp_buf, _size);
+			 _size = 0;
+		 } else {
+			 memcpy(data, temp_buf, 512);
+			 _size -= 512;
+			 data += 512;
+		 }
+		 free(temp_buf);  // ✅ Free temp buffer
+		 sector++;
+	 }
+	 return buf;  // ✅ Return data yang benar
 }

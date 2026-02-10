@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include "main.h"
-void print(char c);
+void write_terminal(char c);
 void print_str(char *str);
 void print_hex(uint64_t n);
 void print_int(int64_t val);
