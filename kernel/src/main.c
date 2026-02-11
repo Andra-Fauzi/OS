@@ -170,12 +170,14 @@ void kmain(void) {
     setup_mouse_ehci();
     print_str("Mouse EHCI Initialized\n");
 
+    // asm volatile("sti");
+    input_mouse_ehci();
+
     // Make sure everything is ready before opening the interrupt gate
 
     asm volatile("cli");
     printf("Setup AHCI\n");
     setup_ahci();
-
     
     if (sataport) {
         printf("Testing AHCI Read...\n");
@@ -229,9 +231,14 @@ void kmain(void) {
     asm volatile("sti");
     print_str("Interrupts are now ON\n");
 
+    extern thread_t *running_thread;
     
+
     while(1) {
-        printf("main task\n");
+        running_thread->lock = true;
+        // printf("main task\n");
+        // input_mouse_ehci();
+        running_thread->lock = false;
 	    asm volatile("hlt");
     }
 

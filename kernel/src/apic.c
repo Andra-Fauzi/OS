@@ -133,22 +133,15 @@ void lapic_timer_init(void) {
     lapic_write(LAPIC_LVT_TIMER, 0x20000 | 0x40);
 
     /* initial count */
-    lapic_write(LAPIC_TIMER_INIT, 0x2000000);
+    lapic_write(LAPIC_TIMER_INIT, 0x200000);
 }
 
-static volatile uint64_t tick = 0;
-
-void sleep(uint64_t ms) {
-	uint64_t target = tick + ms;
-	while (tick < target) {
-		asm volatile("hlt");
-	}
-}
 
 /* =======================
    ISR
    ======================= */
-__attribute__((interrupt))
+// not use this anymore
+   __attribute__((interrupt))
 void isr_timer(void *frame) {
     (void)frame;
 

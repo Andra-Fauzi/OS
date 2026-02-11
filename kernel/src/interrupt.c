@@ -2,7 +2,17 @@
 
 #define LAPIC_EOI      0xB0
 
+static volatile uint64_t tick = 0;
+
+void sleep(uint64_t ms) {
+	uint64_t target = tick + ms;
+	while (tick < target) {
+		asm volatile("hlt");
+	}
+}
+
 void isr_timer_modified(struct interrupt_frame *frame) {
+    tick++;
     lapic_write(LAPIC_EOI, 0);
     // printf("berubah\n");
     switch_thread(frame);

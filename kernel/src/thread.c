@@ -2,7 +2,7 @@
 #include "ehci.h"
 #include "vfs.h"
 thread_t *main_thread = NULL;
-thread_t *running_task = NULL;
+thread_t *running_thread = NULL;
 
 static void enable_sse() {
     uint64_t cr0, cr4;
@@ -25,42 +25,21 @@ static void init_fpu_state_buffer() {
 }
 
 void first() {
-    running_task->lock = true;
-    printf("Testing terminal\n");
-    int fd = vfs_open("/dev/tty", O_RDWR);
-    if (fd >= 0) {
-        printf("VFS Open Success: fd=%d\n", fd);
-        char *msg = "Hello VFS Terminal!\n";
-        vfs_write(fd, msg, 21);
-        vfs_close(fd);
-        printf("Testing reading\n");
-        fd = vfs_open("/dev/tty", O_RDONLY);
-        if (fd >= 0) {
-            char buf[32];
-            memset(buf, 0, 32);
-            vfs_read(fd, buf, 32);
-            printf("VFS Read Result: %s\n", buf);
-            vfs_close(fd);
-        } else {
-            printf("VFS Open Failed\n");
-        }
-    } else {
-        printf("VFS Open Failed\n");
-    }
-    running_task->lock = false;
+    // running_thread->lock = true;
+    // running_thread->lock = false;
     printf("first task\n");
     while(1) {
         asm volatile("sti");
-        running_task->lock = true;
+        // running_thread->lock = true;
         input_mouse_ehci();
-        printf("first task\n");
-        running_task->lock = false;
+        // printf("first task\n");
+        // running_thread->lock = false;
         asm volatile("hlt");
     }
 }
 
 void second() {
-    running_task->lock = true;
+    // running_thread->lock = true;
     // Test VFS Open/Write/Read (FAT)
     printf("Testing VFS...\n");
     int fd = vfs_open("/sia/TEST", O_CREAT | O_RDWR);
@@ -82,13 +61,33 @@ void second() {
     } else {
         printf("VFS Open Failed\n");
     }
-    running_task->lock = false;
+    printf("Testing terminal\n");
+    fd = vfs_open("/dev/tty", O_RDWR);
+    if (fd >= 0) {
+        printf("VFS Open Success: fd=%d\n", fd);
+        char *msg = "Hello VFS Terminal!\n";
+        vfs_write(fd, msg, 21);
+        vfs_close(fd);
+        printf("Testing reading\n");
+        fd = vfs_open("/dev/tty", O_RDONLY);
+        if (fd >= 0) {
+            char buf[32];
+            memset(buf, 0, 32);
+            vfs_read(fd, buf, 32);
+            printf("VFS Read Result: %s\n", buf);
+            vfs_close(fd);
+        } else {
+            printf("VFS Open Failed\n");
+        }
+    } else {
+        printf("VFS Open Failed\n");
+    }
     printf("second task\n");
     while(1) {
         asm volatile("sti");
-        running_task->lock = true;
-        printf("second task\n");
-        running_task->lock = false;
+        // running_thread->lock = true;
+        // printf("second task\n");
+        // running_thread->lock = false;
         asm volatile("hlt");
     }
 }
@@ -105,7 +104,7 @@ void init_thread() {
     main_thread->next = first_thread;
     first_thread->next = second_thread;
     second_thread->next = main_thread;
-    running_task = main_thread;
+    running_thread = main_thread;
 }
 
 void create_thread(thread_t *thread, void (*func)()) {
@@ -135,15 +134,15 @@ void create_thread(thread_t *thread, void (*func)()) {
 }
 
 void switch_thread(struct interrupt_frame *frame) {
-    if (running_task == NULL) {
+    if (running_thread == NULL) {
         return;
     }
-    if(running_task->lock) {
+    if(running_thread->lock) {
         return;
     }
-    __asm__ volatile("fxsave %0" : : "m"(running_task->fpu_state));
-    running_task->frame = *frame;
-    running_task = running_task->next;
-    *frame = running_task->frame;
-    __asm__ volatile("fxrstor %0" : : "m"(running_task->fpu_state));
+    __asm__ volatile("fxsave %0" : : "m"(running_thread->fpu_state));
+    running_thread->frame = *frame;
+    running_thread = running_thread->next;
+    *frame = running_thread->frame;
+    __asm__ volatile("fxrstor %0" : : "m"(running_thread->fpu_state));
 }

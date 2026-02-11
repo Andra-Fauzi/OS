@@ -139,10 +139,23 @@ extern volatile uint64_t framebuffer_width;
 uint64_t terminal_x = 0;
 uint64_t terminal_y = 0;
 
+static volatile int terminal_lock = 0;
+
+static void lock_terminal() {
+    while (__sync_lock_test_and_set(&terminal_lock, 1)) {
+        asm volatile("pause");
+    }
+}
+
+static void unlock_terminal() {
+    __sync_lock_release(&terminal_lock);
+}
+
 #define FONT_HEIGHT 16
 #define FONT_WIDTH 8
 
 void clear_screen() {
+    lock_terminal();
 	for(uint64_t y = 0; y < framebuffer_height; y++) {
 		for(uint64_t x = 0; x < framebuffer_width; x++) {
 			framebuffer_ptr[y * (framebuffer_pitch / 4) + x] = 0x0;
@@ -150,6 +163,7 @@ void clear_screen() {
 	}
 	terminal_x = 0;
 	terminal_y = 0;
+    unlock_terminal();
 }
 
 void terminal_scroll() {
@@ -166,7 +180,7 @@ void terminal_scroll() {
 
 }
 
-void write_terminal(char c) {
+static void write_terminal_unlocked(char c) {
     if(c == '\n') {
         terminal_x = 0;
         terminal_y += FONT_HEIGHT;
@@ -202,28 +216,51 @@ void write_terminal(char c) {
 	}
 }
 
-void print_str(char *str) {
+void write_terminal(char c) {
+    lock_terminal();
+    write_terminal_unlocked(c);
+    unlock_terminal();
+}
+
+static void print_str_unlocked(char *str) {
 	while(*str && *str != '\0') {
-		write_terminal(*str);
+		write_terminal_unlocked(*str);
 		str++;
 	}
 }
 
-void print_uint(uint64_t val) {
+void print_str(char *str) {
+    lock_terminal();
+    print_str_unlocked(str);
+    unlock_terminal();
+}
+
+static void print_uint_unlocked(uint64_t val) {
     if (val / 10) {
-        print_uint(val / 10); // Recursion: handle the digits before it first
+        print_uint_unlocked(val / 10);
     }
-    // Print the last digit
     char c = (char)((val % 10) + '0');
-    write_terminal(c);
+    write_terminal_unlocked(c);
+}
+
+void print_uint(uint64_t val) {
+    lock_terminal();
+    print_uint_unlocked(val);
+    unlock_terminal();
+}
+
+static void print_int_unlocked(int64_t val) {
+    if (val < 0) {
+        write_terminal_unlocked('-');
+        val = -val;
+    }
+    print_uint_unlocked((uint64_t)val);
 }
 
 void print_int(int64_t val) {
-    if (val < 0) {
-        write_terminal('-');
-        val = -val;
-    }
-    print_uint((uint64_t)val);
+    lock_terminal();
+    print_int_unlocked(val);
+    unlock_terminal();
 }
 
 // unavailable because freestanding
@@ -244,60 +281,59 @@ void print_float(float val) {
 }
 */
 
-void print_hex(uint64_t n) {
+static void print_hex_unlocked(uint64_t n) {
 	char hex[] = "0123456789ABCDEF";
-	print_str("0x");
+	print_str_unlocked("0x");
 	for(int i = 60; i >= 0; i -= 4) {
-		write_terminal(hex[(n >> i) & 0xF]);
+		write_terminal_unlocked(hex[(n >> i) & 0xF]);
 	}
+}
+
+void print_hex(uint64_t n) {
+    lock_terminal();
+    print_hex_unlocked(n);
+    unlock_terminal();
 }
 
 void printf(char *str, ...) {
 	va_list args;
 	va_start(args, str);
 
+    lock_terminal();
 	while(*str && *str != '\0') {
 		if(*str == '%' && *(str + 1) == 'd') {
 			int64_t val = va_arg(args, int64_t);
-			print_int(val);
+			print_int_unlocked(val);
 			str += 2;
 		}
 		else if(*str == '%' && *(str + 1) == 'u') {
 			uint64_t val = va_arg(args, uint64_t);
-			print_uint(val);
+			print_uint_unlocked(val);
 			str += 2;
 		}
 		else if(*str == '%' && *(str + 1) == 'c') {
 			char val = va_arg(args, int);
-			write_terminal(val);
+			write_terminal_unlocked(val);
 			str += 2;
 		}
 		else if(*str == '%' && *(str + 1) == 's') {
 			char *val = va_arg(args, char *);
-			print_str(val);
+			print_str_unlocked(val);
 			str += 2;
 		}
 		else if(*str == '%' && *(str + 1) == 'x') {
 			uint64_t val = va_arg(args, uint64_t);
-			print_hex(val);
+			print_hex_unlocked(val);
 			str += 2;
 		}
-		// unavailable
-		/*
-		else if(*str == '%' && *(str + 1) == 'f') {
-			float val = va_arg(args, double);
-			print_float(val);
-			str += 2;
-		}
-		*/
 		else {
-			write_terminal(*str);
+			write_terminal_unlocked(*str);
 			str++;
 		}
 	}
+    unlock_terminal();
 
 	va_end(args);
-
 }
 
 void draw_pixel(uint32_t x, uint32_t y, uint32_t color) {
