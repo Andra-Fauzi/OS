@@ -1,14 +1,12 @@
 #include "util.h"
 
 void strcat(char *destination, char *source) {
+    while(*destination) destination++;
+    while((*destination++ = *source++));
 }
 
 void strcpy(char *destination, char *source) {
-	while(*source != '\0' && *source) {
-		*destination = *source;
-		destination++;
-		source++;
-	}
+    while((*destination++ = *source++));
 }
 
 int strlen(char *str) {

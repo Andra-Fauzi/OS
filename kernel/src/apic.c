@@ -133,7 +133,7 @@ void lapic_timer_init(void) {
     lapic_write(LAPIC_LVT_TIMER, 0x20000 | 0x40);
 
     /* initial count */
-    lapic_write(LAPIC_TIMER_INIT, 0x100000);
+    lapic_write(LAPIC_TIMER_INIT, 0x2000000);
 }
 
 static volatile uint64_t tick = 0;
@@ -154,7 +154,7 @@ void isr_timer(void *frame) {
 
     /* DO NOT PRINT TOO OFTEN */
     if (1) {
-        // print_str("timer jalan\n");
+        print_str("timer jalan\n");
     }
 
     lapic_write(LAPIC_EOI, 0);

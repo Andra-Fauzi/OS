@@ -505,6 +505,8 @@ void input_mouse_ehci() {
         return;
     }
 
+    printf("ini jalan ya\n");
+
     if (mouse_qh == NULL) {
         mouse_qh = (volatile ehci_queue_head_t*)malloc(sizeof(ehci_queue_head_t), 32);
         mouse_qtd = (volatile ehci_qtd_t*)malloc(sizeof(ehci_qtd_t), 32);
@@ -516,7 +518,8 @@ void input_mouse_ehci() {
         mouse_qh->horizontal_link_pointer = 1; // Terminate for periodic
         // Address 1, EP, EPS=High (2), Max Packet, DTC=1 for interrupt
         mouse_qh->endpoint_characteristics = 1 | (endpoint << 8) | (2 << 12) | (max_packet_size << 16) | (1 << 14);
-        mouse_qh->endpoint_capabilities = (3 << 28) | (1 << 30); // NAK Count Reload=3, Multiplier = 1
+        // S-mask = 0x01 (bit 0), C-mask = 0x00, RL=3, Multiplier=1
+        mouse_qh->endpoint_capabilities = (3 << 28) | (1 << 30) | 0x01; 
         
         // Token: DATA0, Total Bytes, CERR=3, PID=IN, Active
         mouse_qtd->token = (0 << 31) | (max_packet_size << 16) | (3 << 10) | (1 << 8) | (1 << 7);
@@ -535,6 +538,7 @@ void input_mouse_ehci() {
     }
 
     if (!(mouse_qtd->token & (1 << 7))) { // If not active
+        printf("MOUSENYA GERAK\n");
         static int64_t x = 0;
         static int64_t y = 0;
         int8_t x_movement = (int8_t)mouse_data_buf[1];

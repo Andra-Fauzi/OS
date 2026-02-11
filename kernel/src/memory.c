@@ -23,6 +23,18 @@ static size_t current_region = 0;
 
 #define FRAME_SIZE 4096
 
+static volatile int malloc_lock = 0;
+
+static void lock_malloc() {
+    while (__sync_lock_test_and_set(&malloc_lock, 1)) {
+        asm volatile("pause");
+    }
+}
+
+static void unlock_malloc() {
+    __sync_lock_release(&malloc_lock);
+}
+
 void frame_allocator_init(void) {
 	if(memmap_request.response == NULL) {
 		print_str("frame allocator: memmap tidak ada response\n");
@@ -75,8 +87,8 @@ uint64_t allocate_frame(void) {
 block_t *heap_head = NULL;
 
 void *malloc(uint64_t size, uint64_t alignment) {
-	// printf("block size: %d\n", sizeof(block_t));
 	if(size == 0) return NULL;
+    lock_malloc();
 
 	while(current_region < usable_region_count) {
 		struct limine_memmap_entry *r = usable_regions[current_region];
@@ -104,80 +116,59 @@ void *malloc(uint64_t size, uint64_t alignment) {
 	while(ptr != NULL) {
 		if(ptr->free == true && ptr->size >= size) {
 			ptr->free = false;  // Mark as used
-			return (void *)(ptr + 1);
+			// Zero out the reused block
+			uint8_t *v = (uint8_t *)(ptr + 1);
+			for(uint64_t i = 0; i < ptr->size; i++) {
+				v[i] = 0;
+			}
+            unlock_malloc();
+			return (void *)v;
 		}
 		ptr = ptr->next;
 	}
 
 	if(frame + total_size <= end) {
 		next_frame_addr = frame + total_size;
-		// printf("frame: %x\n", frame);
 		
-		// Zero out the entire allocated area (header + data)
 		uint8_t *v = (uint8_t *)PHYS_TO_VIRT(frame);
 		for(uint64_t i = 0; i < total_size; i++) {
 			v[i] = 0;
 		}
-			// printf("alamat malloc nya: %x\n", v);
-			block_t *block = NULL;
-			if(heap_head == NULL) {
-				heap_head = (block_t *)v;
-				heap_head->size = size;
-				heap_head->free = false;
-				heap_head->next = NULL;
-				block = heap_head;
-				// printf("heap head nya: %x\n", block);
-			}
-			else {
-				block_t *ptr_head = heap_head;
-				while(ptr_head->next != NULL) {
-					ptr_head = ptr_head->next;
-				}	
-				ptr_head->next = (block_t *)v;
-				ptr_head->next->size = size;
-				ptr_head->next->free = false;
-				ptr_head->next->next = NULL;
-				block = ptr_head->next;
-				// printf("next nya: %x\n", ptr_head->next);
-			}
-		// printf("malloc: %x\n", (void *)(block + 1));
-		// printf("block: %x\n", (void *)block);
-		return (void *)(block + 1); 
+
+		block_t *block = NULL;
+		if(heap_head == NULL) {
+			heap_head = (block_t *)v;
+			heap_head->size = size;
+			heap_head->free = false;
+			heap_head->next = NULL;
+			block = heap_head;
 		}
-		current_region++;
+		else {
+			block_t *ptr_head = heap_head;
+			while(ptr_head->next != NULL) {
+				ptr_head = ptr_head->next;
+			}	
+			ptr_head->next = (block_t *)v;
+			ptr_head->next->size = size;
+			ptr_head->next->free = false;
+			ptr_head->next->next = NULL;
+			block = ptr_head->next;
+		}
+		uint64_t *res = (void *)(block + 1);
+        unlock_malloc();
+        return res;
 	}
+	current_region++;
+}
+    unlock_malloc();
 	return NULL;
 }
 
-// this well works but it's can't free
-// void *malloc(uint64_t size, uint64_t alignment) {
-// 	if(size == 0) return NULL;
-
-// 	while(current_region < usable_region_count) {
-// 		struct limine_memmap_entry *r = usable_regions[current_region];
-// 		uint64_t start = r->base;
-// 		uint64_t end = r->base + r->length;
-
-// 		if(next_frame_addr < start) 
-// 			next_frame_addr = start;
-
-// 		uint64_t frame = (next_frame_addr + (alignment - 1)) & ~(alignment - 1);
-
-// 		if(frame + size <= end) {
-// 			next_frame_addr = frame + size;
-// 			uint8_t *v = (uint8_t *)PHYS_TO_VIRT(frame);
-// 			for(int i = 0; i < size; i++) {
-// 				v[i] = 0;
-// 			}
-// 			return (void *)v;
-// 		}
-// 		current_region++;
-// 	}
-// 	return NULL;
-// }
-
 void free(void *ptr) {
-	block_t *ptr_block = ptr;
+    if (!ptr) return;
+    lock_malloc();
+	block_t *ptr_block = (block_t *)ptr;
 	block_t *real_ptr = ptr_block - 1;
 	real_ptr->free = true;
+    unlock_malloc();
 }

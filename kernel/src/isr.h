@@ -1,15 +1,16 @@
 #pragma once
 #include <stdint.h>
 
-#include "idt.h"
-#include "terminal.h"
-
 struct interrupt_frame {
     uint64_t r15, r14, r13, r12, r11, r10, r9, r8;
     uint64_t rsi, rdi, rbp, rdx, rcx, rbx, rax;
     uint64_t int_no, err;
     uint64_t rip, cs, rflags, rsp, ss;
 };
+
+#include "idt.h"
+#include "terminal.h"
+#include "apic.h"
 
 extern void isr0();
 extern void isr1();

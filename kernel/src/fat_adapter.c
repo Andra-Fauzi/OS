@@ -18,39 +18,38 @@ void *fat_wrap_open(const char *path, int flags) {
         if (flags & O_CREAT) {
             fat_dir_entry_t new_entry;
             memset(&new_entry, 0, sizeof(fat_dir_entry_t));
-            // Simple name extraction (assumes "/filename" or "filename")
-            const char *name = path;
-            if (path[0] == '/') name++;
-            printf("name is %s\n",name);
             
-            // Allow basic creation
+            char parent_buf[VFS_PATH_LENGTH];
+            char file_buf[VFS_PATH_LENGTH];
+            memset(parent_buf, 0, VFS_PATH_LENGTH);
+            memset(file_buf, 0, VFS_PATH_LENGTH);
+
+            // Logic: find last slash to split directory from filename
+            char *last_slash = strrchr(path, '/');
+            if (last_slash) {
+                int parent_len = last_slash - path;
+                if (parent_len == 0) {
+                    strcpy(parent_buf, "/");
+                } else {
+                    memcpy(parent_buf, path, parent_len);
+                    parent_buf[parent_len] = 0;
+                }
+                strcpy(file_buf, last_slash + 1);
+            } else {
+                strcpy(parent_buf, "/");
+                strcpy(file_buf, path);
+            }
+            
+            // Populate Entry Name (8.3 format)
             memset(new_entry.file_name, ' ', 11);
-            int len = strlen((char*)name);
+            int len = strlen(file_buf);
             if(len > 11) len = 11;
-            memcpy(new_entry.file_name, name, len);
-            char *path_x = strrchr(path, '/');
-            if(path_x == NULL) {
-                printf("kosong\n");
-                printf("path is %s\n", path);
-                create_entry("/", &new_entry);
-                entry = get_entry_with_path(path, &cluster);
-                listing_root_dir_print();
-            }
-            else {
-                printf("ada\n");
-                printf("path is %s\n", path);
-                printf("index path_x is %s\n", path_x);
-                int index = (int)(path_x - path);
-                printf("index is %d\n", (int64_t)index);
-                char *path_copy = (char*)malloc(index + 1, 4);
-                memcpy(path_copy, path, index);
-                path_copy[index] = '\0';
-                printf("path copy %s\n", path_copy);
-                create_entry(path_copy, &new_entry);
-                // Try getting it again
-                listing_root_dir_print();
-                entry = get_entry_with_path(path, &cluster);
-            }
+            memcpy(new_entry.file_name, file_buf, len);
+            
+            create_entry(parent_buf, &new_entry);
+            
+            // Try getting it again
+            entry = get_entry_with_path(path, &cluster);
         }
     }
 

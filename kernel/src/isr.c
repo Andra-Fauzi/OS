@@ -36,9 +36,5 @@ void isr_install() {
 }
 
 void isr_handler(struct interrupt_frame* frame) {
-    // debug / handle interrupt
     printf("Interrupt %d\n", frame->int_no);
-    while(1) {
-        asm("hlt");
-    }
 }

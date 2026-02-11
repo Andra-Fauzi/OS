@@ -155,8 +155,20 @@ void kmain(void) {
     lapic_timer_init();
     print_str("Timer Initialized\n");
 
+    init_interrupt();
+    print_str("Interrupts Initialized\n");
+
     init_keyboard();
     print_str("Keyboard Initialized\n");
+
+    init_thread();
+    print_str("Thread Initialized\n");
+
+    setup_ehci();
+    print_str("EHCI Initialized\n");
+
+    setup_mouse_ehci();
+    print_str("Mouse EHCI Initialized\n");
 
     // Make sure everything is ready before opening the interrupt gate
 
@@ -164,9 +176,7 @@ void kmain(void) {
     printf("Setup AHCI\n");
     setup_ahci();
 
-    asm volatile("sti");
-    print_str("Interrupts are now ON\n");
-
+    
     if (sataport) {
         printf("Testing AHCI Read...\n");
         uint64_t buf_phys = allocate_frame();
@@ -180,62 +190,33 @@ void kmain(void) {
         partition_entry_t *partition = (partition_entry_t*)mbr->partition_table;
         
         if(success) {
-             printf("AHCI Read Success! Data:\n");
-             for(int i=0; i<512; i++) {
-                 printf("%c ", (char)buf2[i]);
-             }
-             printf("\n");
-             printf("Partition Table:\n");
-             for(int i=0; i<4; i++) {
-                 printf("Partition %d:\n", i+1);
-                 printf("  Bootable: %d\n", partition[i].bootable);
-                 printf("  Type: %x\n", partition[i].type);
-                 printf("  Start Sector: %d\n", partition[i].LBA_start_sector);
-                 printf("  Total Sectors: %d\n", partition[i].total_sectors);
-             }
+            printf("AHCI Read Success! Data:\n");
+            for(int i=0; i<512; i++) {
+                printf("%c ", (char)buf2[i]);
+            }
+            printf("\n");
+            printf("Partition Table:\n");
+            for(int i=0; i<4; i++) {
+                printf("Partition %d:\n", i+1);
+                printf("  Bootable: %d\n", partition[i].bootable);
+                printf("  Type: %x\n", partition[i].type);
+                printf("  Start Sector: %d\n", partition[i].LBA_start_sector);
+                printf("  Total Sectors: %d\n", partition[i].total_sectors);
+            }
         } else {
-             printf("AHCI Read Failed\n");
+            printf("AHCI Read Failed\n");
         }
     } else {
         printf("No SATA port found for testing.\n");
-	asm volatile("hlt");
+        asm volatile("hlt");
     }
-
+    
     printf("testing identify\n");
     identify(sataport);
-
+    
     uint32_t total = 0;
     fat_init();
-
-    /*
-    uint32_t table_value = FAT32_read(5);
-    printf("table value %d\n", table_value);
-    FAT32_write(5, 20);
-    uint32_t new_table_value = FAT32_read(5);
-    printf("new table value %d\n", new_table_value);
-    */
-    // extern uint32_t fat_size;
-    // printf("fat size is %d\n", fat_size);
-
-    fat_dir_entry_t entry;
-    memset(&entry, 0, sizeof(fat_dir_entry_t));
-    memset(&entry.file_name, ' ', 11);
-    entry.file_name[0] = 'T';
-    entry.file_name[1] = 'E';
-    entry.file_name[2] = 'S';
-    entry.file_name[3] = 'T';
-    entry.attribute_file = 0x20;
-    entry.first_cluster_low = 0;
-    entry.first_cluster_high = 0;
-    entry.size_file = 0;
-
-    // create_entry("/", &entry);
-
-    // write_data("/", &entry, "Hello World!", 11);
-    // write_data("/", &entry, "Hello ANDRA!", 11);
-
-    listing_root_dir_print();
-
+    
     // VFS Integration
     vfs_init();
     fs_operations_t *fat_ops = fat_get_operations();
@@ -244,106 +225,14 @@ void kmain(void) {
     
     // Terminal VFS
     vfs_mount("/dev/tty", "terminal", "tty", vfs_terminal_get_ops());
-    vfs_mount("/dev/tty", "/", "fat32", fat_ops);
-
-    // Test VFS Terminal
-    printf("Testing Terminal VFS (Type something and press Enter)...\n");
-    int fd_term = vfs_open("/dev/tty", O_RDWR);
-    if(fd_term >= 0) {
-        char buf[128];
-        memset(buf, 0, 128);
-        vfs_write(fd_term, "Enter text: ", 12);
-        
-        int read_count = vfs_read(fd_term, buf, 127); // Leave room for null terminator
-        if(read_count > 0) {
-            // Remove newline if present for cleaner output
-            if(buf[read_count-1] == '\n') buf[read_count-1] = '\0';
-            
-            vfs_write(fd_term, "You typed: ", 11);
-            vfs_write(fd_term, buf, read_count);
-            vfs_write(fd_term, "\n", 1);
-        }
-        vfs_close(fd_term);
-    } else {
-        printf("Failed to open terminal VFS\n");
-    }
-
-    // Test VFS Open/Write/Read (FAT)
-    printf("Testing VFS...\n");
-    int fd = vfs_open("/EFI/TEST", O_CREAT | O_RDWR);
-    if (fd >= 0) {
-        printf("VFS Open Success: fd=%d\n", fd);
-        char *msg = "Hello VFS World!";
-        vfs_write(fd, msg, 16);
-        vfs_close(fd);
-        
-        // Read back
-        fd = vfs_open("/dev/sda/EFI/TEST", O_RDONLY);
-        if (fd >= 0) {
-            char buf[32];
-            memset(buf, 0, 32);
-            vfs_read(fd, buf, 32);
-            printf("VFS Read: %s\n", buf);
-            vfs_close(fd);
-        }
-    } else {
-        printf("VFS Open Failed\n");
-    }
-
-    // volatile uint64_t a = 1;
-    // volatile uint64_t b = 0;
-    // a = a / b;          // 💥 trigger #DE
-
-    // char *halo = (char *)malloc(sizeof(char) * 5, 4);
-    // halo[0] = 'a';
-    // halo[1] = 'n';
-    // halo[2] = 'd';
-    // halo[3] = 'r';
-    // halo[4] = 'a';
-    // printf("str: %s\n", halo);
-    // printf("alamat: %x\n", &halo[0]);
-    // free(halo);
-    // char *sigma = (char *)malloc(sizeof(char) * 5, 32);
-    // sigma[0] = 's';
-    // sigma[1] = 'i';
-    // sigma[2] = 'g';
-    // sigma[3] = 'm';
-    // sigma[4] = 'a';
-    // printf("str: %s\n", sigma);
-    // printf("alamat: %x\n", &sigma[0]);
-    // printf("str: %s\n", halo);
-    // printf("alamat: %x\n", &halo[0]);
-    // something();
-
-    // for(volatile uint32_t i = 0; i < 0xFFFFFFFF; i++);
     
-    // setup_mouse();
-    // while(1) {
-    // }
-        
-    // printf("test check 1\n");
-    // check_device_status();
-    // setup_ehci();
-    // init_OHCI();
-    // printf("test check 2\n");
-    // find_device_port_and_sign_address();
-    // check_device_status();
-    // setup_mouse_ehci();
-    // setup_mouse();
+    asm volatile("sti");
+    print_str("Interrupts are now ON\n");
 
-    // while(1) {
-    //     input_mouse_ehci();
-    // }
-    
-    
     
     while(1) {
-        // char c = keyboard_getchar();
-        // if (c != -1) {
-        //     print(c);
-        // }
-        // input_mouse();
-	asm volatile("hlt");
+        printf("main task\n");
+	    asm volatile("hlt");
     }
 
     hcf();

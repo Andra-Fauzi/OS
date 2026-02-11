@@ -44,7 +44,7 @@ void idt_init() {
     set_idt_entry(17, isr_default_err, 0x28, 0x8E);
 
     /* APIC */
-    set_idt_entry(0x40, isr_timer, 0x28, 0x8E);
+    // set_idt_entry(0x40, isr_timer, 0x28, 0x8E);
     set_idt_entry(0xFF, isr_spurious, 0x28, 0x8E);
     set_idt_entry(33, keyboard_callback, 0x28, 0x8E);
 
