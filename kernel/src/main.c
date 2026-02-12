@@ -107,6 +107,74 @@ volatile uint64_t framebuffer_pitch;
 volatile uint64_t framebuffer_height;
 volatile uint64_t framebuffer_width;
 
+void first() {
+    // running_thread->lock = true;
+    // running_thread->lock = false;
+    printf("first task\n");
+    while(1) {
+        asm volatile("sti");
+        // running_thread->lock = true;
+        input_mouse_ehci();
+        printf("first task\n");
+        // running_thread->lock = false;
+        asm volatile("hlt");
+    }
+}
+
+void second() {
+    // running_thread->lock = true;
+    // Test VFS Open/Write/Read (FAT)
+    printf("Testing VFS...\n");
+    int fd = vfs_open("/sia/TEST", O_CREAT | O_RDWR);
+    if (fd >= 0) {
+        printf("VFS Open Success: fd=%d\n", fd);
+        char *msg = "Hello VFS World!";
+        vfs_write(fd, msg, 16);
+        vfs_close(fd);
+        
+        // Read back
+        fd = vfs_open("/dev/sda/sia/TEST", O_RDONLY);
+        if (fd >= 0) {
+            char buf[32];
+            memset(buf, 0, 32);
+            vfs_read(fd, buf, 32);
+            printf("VFS Read Result: %s\n", buf);
+            vfs_close(fd);
+        }
+    } else {
+        printf("VFS Open Failed\n");
+    }
+    printf("Testing terminal\n");
+    fd = vfs_open("/dev/tty", O_RDWR);
+    if (fd >= 0) {
+        printf("VFS Open Success: fd=%d\n", fd);
+        char *msg = "Hello VFS Terminal!\n";
+        vfs_write(fd, msg, 21);
+        vfs_close(fd);
+        printf("Testing reading\n");
+        fd = vfs_open("/dev/tty", O_RDONLY);
+        if (fd >= 0) {
+            char buf[32];
+            memset(buf, 0, 32);
+            vfs_read(fd, buf, 32);
+            printf("VFS Read Result: %s\n", buf);
+            vfs_close(fd);
+        } else {
+            printf("VFS Open Failed\n");
+        }
+    } else {
+        printf("VFS Open Failed\n");
+    }
+    printf("second task\n");
+    while(1) {
+        asm volatile("sti");
+        // running_thread->lock = true;
+        printf("second task\n");
+        // running_thread->lock = false;
+        asm volatile("hlt");
+    }
+}
+
 // The following will be our kernel's entry point.
 // If renaming kmain() to something else, make sure to change the
 // linker script accordingly.
@@ -170,7 +238,7 @@ void kmain(void) {
     setup_mouse_ehci();
     print_str("Mouse EHCI Initialized\n");
 
-    // asm volatile("sti");
+    asm volatile("sti");
     input_mouse_ehci();
 
     // Make sure everything is ready before opening the interrupt gate
@@ -233,6 +301,12 @@ void kmain(void) {
 
     extern thread_t *running_thread;
     
+    thread_t *first_thread = (thread_t *)malloc(sizeof(thread_t), 16);
+    create_thread(first_thread, first);
+    thread_t *second_thread = (thread_t *)malloc(sizeof(thread_t), 16);
+    create_thread(second_thread, second);
+    add_thread(first_thread);
+    add_thread(second_thread);
 
     while(1) {
         running_thread->lock = true;
@@ -241,6 +315,7 @@ void kmain(void) {
         running_thread->lock = false;
 	    asm volatile("hlt");
     }
+
 
     hcf();
 }

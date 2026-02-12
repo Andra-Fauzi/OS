@@ -13,3 +13,4 @@ typedef struct thread {
 void create_thread(thread_t *thread, void (*func)());
 void init_thread();
 void switch_thread(struct interrupt_frame *frame);
+void add_thread(thread_t *thread);
