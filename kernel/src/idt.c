@@ -31,22 +31,22 @@ void set_idt_entry(int n, void* handler, uint16_t selector, uint16_t type_attr) 
 
 void idt_init() {
     for (int i = 0; i < 256; i++) {
-        set_idt_entry(i, isr_default, 0x28, 0x8E);
+        set_idt_entry(i, isr_default, 0x08, 0x8E);
     }
 
     /* exceptions WITH error code */
-    set_idt_entry(8,  isr_default_err, 0x28, 0x8E);
-    set_idt_entry(10, isr_default_err, 0x28, 0x8E);
-    set_idt_entry(11, isr_default_err, 0x28, 0x8E);
-    set_idt_entry(12, isr_default_err, 0x28, 0x8E);
-    set_idt_entry(13, isr_default_err, 0x28, 0x8E);
-    set_idt_entry(14, isr_default_err, 0x28, 0x8E);
-    set_idt_entry(17, isr_default_err, 0x28, 0x8E);
+    set_idt_entry(8,  isr_default_err, 0x08, 0x8E);
+    set_idt_entry(10, isr_default_err, 0x08, 0x8E);
+    set_idt_entry(11, isr_default_err, 0x08, 0x8E);
+    set_idt_entry(12, isr_default_err, 0x08, 0x8E);
+    set_idt_entry(13, isr_default_err, 0x08, 0x8E);
+    set_idt_entry(14, isr_default_err, 0x08, 0x8E);
+    set_idt_entry(17, isr_default_err, 0x08, 0x8E);
 
     /* APIC */
-    // set_idt_entry(0x40, isr_timer, 0x28, 0x8E);
-    set_idt_entry(0xFF, isr_spurious, 0x28, 0x8E);
-    set_idt_entry(33, keyboard_callback, 0x28, 0x8E);
+    // set_idt_entry(0x40, isr_timer, 0x08, 0x8E);
+    set_idt_entry(0xFF, isr_spurious, 0x08, 0x8E);
+    set_idt_entry(33, keyboard_callback, 0x08, 0x8E);
 
     idtp.limit = sizeof(idt) - 1;
     idtp.base = (uint64_t)&idt;

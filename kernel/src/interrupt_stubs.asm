@@ -7,6 +7,12 @@ timer_stub:
 	push 64
 	jmp interrupt_common_stub
 
+global syscall_stub
+syscall_stub:
+    cli
+    push 0
+    push 128
+
 interrupt_common_stub:
     ; save general purpose registers
     push rax

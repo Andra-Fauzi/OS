@@ -8,6 +8,8 @@ char *strtok(char *str, const char *delim);
 int strcmp(const char *s1, const char *s2);
 void strcpy(char *destination, char *source);
 char *strrchr(const char *str, int c);
+char *strchr(const char *s, int c);
+void strcat(char *destination, char *source);
 
 void *memcpy(void *restrict dest, const void *restrict src, size_t n);
 void *memset(void *s, int c, size_t n);

@@ -3,7 +3,10 @@
 #include "isr.h"
 #include "thread.h"
 #include "idt.h"
+#include "terminal.h"
+#include "syscall.h"
 
 void init_interrupt();
 
 extern void timer_stub();
+extern void syscall_stub();

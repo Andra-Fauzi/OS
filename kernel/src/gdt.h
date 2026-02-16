@@ -51,7 +51,7 @@ struct __attribute__((packed)) gdtr {
     uint64_t base;
 } ;
 
-extern struct gdt_entry gdt[9];
+extern struct gdt_entry gdt[7];
 extern struct gdt_tss_entry tss_desc;
 extern struct tss64 tss;
 

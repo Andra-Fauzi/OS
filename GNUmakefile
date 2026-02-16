@@ -4,7 +4,7 @@
 # Default user QEMU flags. These are appended to the QEMU command calls.
 QEMUFLAGS := -m 2G -no-reboot -no-shutdown -monitor stdio -s -S
 
-override IMAGE_NAME := template
+override IMAGE_NAME := MYOS
 
 # Toolchain for building the 'limine' executable for the host.
 HOST_CC := cc
@@ -98,11 +98,12 @@ $(IMAGE_NAME).hdd: limine/limine kernel
 	PATH=$$PATH:/usr/sbin:/sbin sgdisk $(IMAGE_NAME).hdd -n 1:2048:0 -t 1:ef00 -m 1
 	./limine/limine bios-install $(IMAGE_NAME).hdd
 	mformat -i $(IMAGE_NAME).hdd@@1M -F
-	mmd -i $(IMAGE_NAME).hdd@@1M ::/EFI ::/EFI/BOOT ::/boot ::/boot/limine
+	mmd -i $(IMAGE_NAME).hdd@@1M ::/EFI ::/EFI/BOOT ::/boot ::/boot/limine ::/ELF_TEST
 	mcopy -i $(IMAGE_NAME).hdd@@1M kernel/bin/kernel ::/boot
 	mcopy -i $(IMAGE_NAME).hdd@@1M limine.conf limine/limine-bios.sys ::/boot/limine
 	mcopy -i $(IMAGE_NAME).hdd@@1M limine/BOOTX64.EFI ::/EFI/BOOT
 	mcopy -i $(IMAGE_NAME).hdd@@1M limine/BOOTIA32.EFI ::/EFI/BOOT
+	mcopy -i $(IMAGE_NAME).hdd@@1M kernel/test/t_elf.elf ::/ELF_TEST
 
 .PHONY: clean
 clean:

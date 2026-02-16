@@ -67,11 +67,14 @@ uint64_t *get_next_level(uint64_t *current_level, size_t entry_idx) {
 
 
         current_level[entry_idx] =
-            new_table_phys | PTE_PRESENT | PTE_WRITABLE;
+            new_table_phys | PTE_PRESENT | PTE_WRITABLE | PTE_USER;
 
         uint64_t *new_table = PHYS_TO_VIRT(new_table_phys);
         for (int i = 0; i < 512; i++) new_table[i] = 0;
     }
+
+    // Ensure PTE_USER is set on the path to a user page
+    current_level[entry_idx] |= (PTE_USER); 
 
     return PHYS_TO_VIRT(current_level[entry_idx] & PTE_ADDR_MASK);
 }

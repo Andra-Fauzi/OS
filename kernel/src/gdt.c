@@ -1,7 +1,8 @@
 #include "gdt.h"
 #include "util.h"
+#include "memory.h"
 
-struct gdt_entry gdt[9];
+struct gdt_entry gdt[7];
 struct gdt_tss_entry tss_desc;
 struct tss64 tss;
 
@@ -35,27 +36,31 @@ void gdt_init() {
     memset(gdt, 0, sizeof(gdt));
     memset(&tss, 0, sizeof(tss));
 
+    // Allocate a kernel stack for TSS.rsp0 (used for Ring 3 -> Ring 0 transitions)
+    uint64_t tss_rsp0 = (uint64_t)malloc(8192, 16) + 8192;
+    tss.rsp0 = tss_rsp0;
+    tss.iopb_offset = sizeof(tss); // Disable IO bitmap
+
     // 0x00: Null
     set_gdt_entry(0, 0, 0, 0, 0);
 
-    // 0x08: 16-bit Code
-    set_gdt_entry(1, 0, 0xFFFF, 0x9A, 0x00);
-    // 0x10: 16-bit Data
-    set_gdt_entry(2, 0, 0xFFFF, 0x92, 0x00);
-    // 0x18: 32-bit Code
-    set_gdt_entry(3, 0, 0xFFFFFFFF, 0x9A, 0xCF);
-    // 0x20: 32-bit Data
-    set_gdt_entry(4, 0, 0xFFFFFFFF, 0x92, 0xCF);
+    // 0x8: 64-bit Code (Ring 0)
+    set_gdt_entry(1, 0, 0, 0x9A, 0x20);
 
-    // 0x28: 64-bit Code
-    set_gdt_entry(5, 0, 0, 0x9A, 0x20);
+    // 0x10: 64-bit Data (Ring 0)
+    set_gdt_entry(2, 0, 0, 0x92, 0x00);
 
-    // 0x30: 64-bit Data
-    set_gdt_entry(6, 0, 0, 0x92, 0x00);
+    // 0x18: 64-bit Code (Ring 3)
+    // Access 0xFA = Ring 3, Code, Present
+    set_gdt_entry(3, 0, 0, 0xFA, 0x20);
 
-    // 0x38: TSS Descriptor (Occupies indices 7 and 8)
+    // 0x20: 64-bit Data (Ring 3)
+    // Access 0xF2 = Ring 3, Data, Present
+    set_gdt_entry(4, 0, 0, 0xF2, 0x00);
+
+    // 0x28: TSS Descriptor (Occupies indices 7 and 8)
     // Access: 0x89 (Present, Ring 0, Available 64-bit TSS)
-    set_gdt_tss_entry(7, (uint64_t)&tss, sizeof(tss) - 1, 0x89, 0x00);
+    set_gdt_tss_entry(5, (uint64_t)&tss, sizeof(tss) - 1, 0x89, 0x00);
     
     struct gdtr gdt_ptr;
     gdt_ptr.limit = sizeof(gdt) - 1;

@@ -1,12 +1,12 @@
 global gdt_reload
 gdt_reload:
     lgdt [rdi]
-    push 0x28
+    push 0x08
     lea rax, [rel .reload_CS]
     push rax
     retfq
 .reload_CS:
-    mov ax, 0x30
+    mov ax, 0x10
     mov ds, ax
     mov es, ax
     mov fs, ax
@@ -16,6 +16,6 @@ gdt_reload:
 
 global tss_load
 tss_load:
-    mov ax, 0x38
+    mov ax, 0x28
     ltr ax
     ret

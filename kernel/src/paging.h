@@ -25,3 +25,5 @@ extern volatile struct limine_hhdm_request hhdm_request;
 #define PTE_HUGE (1ULL << 7)
 #define PTE_GLOBAL (1ULL << 8)
 #define PTE_ADDR_MASK 0x000ffffffffff000ULL
+
+#define PAGE_SIZE 4096ULL

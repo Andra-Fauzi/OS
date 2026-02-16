@@ -98,5 +98,26 @@ char keyboard_getchar() {
 }
 
 void init_keyboard() {
+	// Drain the PS/2 buffer
+	while (inb(0x64) & 1) {
+		inb(0x60);
+	}
+
+	// Enable the first PS/2 port (keyboard)
+	outb(0x64, 0xAE);
+
+	// Get the configuration byte
+	outb(0x64, 0x20);
+	while (!(inb(0x64) & 1));
+	uint8_t config = inb(0x60);
+
+	// Enable interrupts for the first port
+	config |= (1 << 0);
+	
+	// Write back the configuration byte
+	outb(0x64, 0x60);
+	while (inb(0x64) & 2);
+	outb(0x60, config);
+
 	ioapic_enable_keyboard();
 }

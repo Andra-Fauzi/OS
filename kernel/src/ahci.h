@@ -158,7 +158,7 @@ typedef volatile struct {
     uint32_t rsv0;      // 0x1C, Reserved
     uint32_t tfd;       // 0x20, Task File Data
     uint32_t sig;       // 0x24, Signature
-    uint32_t ssts;      // 0x28, SATA Status (SStatus)
+    uint32_t ssts;      // 0x08, SATA Status (SStatus)
     uint32_t sctl;      // 0x2C, SATA Control (SControl)
     uint32_t serr;      // 0x30, SATA Error (SError)
     uint32_t sact;      // 0x34, SATA Active (SActive)

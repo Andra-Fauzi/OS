@@ -160,13 +160,6 @@ void fat_init() {
 }
 
 
-// --- Directory Operations ---
-
-// Generic iterator over directory entries
-// If start_cluster == 0 && FAT16, iterates root dir fixed area.
-// Otherwise iterates the cluster chain.
-typedef bool (*dir_iter_cb)(fat_dir_entry_t *entry, uint32_t sector_lba, uint32_t entry_offset, void *ctx);
-
 void fat_foreach_entry(uint32_t start_cluster, dir_iter_cb cb, void *ctx) {
     uint8_t *buf = (uint8_t*)malloc(FAT_SECTOR_SIZE, 4);
     uint32_t entries_per_sector = FAT_SECTOR_SIZE / FAT_ENTRY_SIZE;
@@ -238,6 +231,24 @@ bool fat_find_entry_in_dir(uint32_t dir_cluster, const char *name_11, fat_dir_en
     return ctx.found;
 }
 
+static void fat_translate(const char *name, char new_name[12]) {
+    memset(new_name, ' ', 11);
+    char *dot = strchr(name, '.');
+    int name_len = dot ? (dot - name) : strlen(name);
+    if (name_len > 8) name_len = 8;
+    memcpy(new_name, name, name_len);
+    if (dot) {
+        int ext_len = strlen(dot + 1);
+        if (ext_len > 3) ext_len = 3;
+        memcpy(new_name + 8, dot + 1, ext_len);
+    }
+    // Uppercase it? FAT is case-insensitive, entry is usually uppercase
+    for(int i=0; i<11; i++) {
+        if(new_name[i] >= 'a' && new_name[i] <= 'z') new_name[i] -= 32;
+    }
+    new_name[11] = '\0';
+}
+
 // Recursive path finder
 fat_dir_entry_t *get_entry_with_path(const char *path, uint32_t *_cluster) {
     char name_buf[12];
@@ -263,7 +274,8 @@ fat_dir_entry_t *get_entry_with_path(const char *path, uint32_t *_cluster) {
         memset(name_buf, ' ', 11);
         int len = strlen(token);
         if(len > 11) len = 11;
-        memcpy(name_buf, token, len);
+        // memcpy(name_buf, token, len);
+        fat_translate(token, name_buf);
         
         find_ctx_t ctx;
         ctx.name = name_buf;
@@ -372,7 +384,7 @@ bool print_cb(fat_dir_entry_t *e, uint32_t s, uint32_t o, void *p) {
     if((e->attribute_file & 0x0F) != 0x0F) {
         char name[12];
         memcpy(name, e->file_name, 11); name[11]=0;
-        printf("File: %s Size: %d Clus: %d\n", name, e->size_file, (e->first_cluster_high<<16)|e->first_cluster_low);
+        printf("File: %s Size: %d Clus: %d Type: %s\n", name, e->size_file, (e->first_cluster_high<<16)|e->first_cluster_low, e->attribute_file == 0x20 ? "File" : "Directory");
     }
     return false;
 }

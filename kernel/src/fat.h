@@ -128,6 +128,13 @@ typedef struct partition_entry {
 	uint32_t total_sectors;
 } __attribute__((packed)) partition_entry_t;
 
+// --- Directory Operations ---
+
+// Generic iterator over directory entries
+// If start_cluster == 0 && FAT16, iterates root dir fixed area.
+// Otherwise iterates the cluster chain.
+typedef bool (*dir_iter_cb)(fat_dir_entry_t *entry, uint32_t sector_lba, uint32_t entry_offset, void *ctx);
+
 void fat_init();
 void listing_root_dir_print();
 void listing_dir_print(uint32_t active_cluster);
@@ -144,3 +151,6 @@ void write_data(const char *path, fat_dir_entry_t *the_entry, char *data, uint32
 char *read_data(const char *path, fat_dir_entry_t *the_entry, uint32_t *size);
 char *read_data_direct_path(const char *path, uint32_t *size);
 void write_data_direct_path(const char *path, char *data, uint32_t size);
+void fat_foreach_entry(uint32_t start_cluster, dir_iter_cb cb, void *ctx);
+bool fat_find_entry_in_dir(uint32_t dir_cluster, const char *name_11, fat_dir_entry_t *out_entry);
+void delete_entry(const char *path, fat_dir_entry_t *the_entry);

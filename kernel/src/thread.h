@@ -7,10 +7,13 @@ typedef struct thread {
     struct thread *next;
     bool lock;
     uint8_t fpu_state[512] __attribute__((aligned(16)));
+    uint32_t pid;
 } thread_t;
 
 
 void create_thread(thread_t *thread, void (*func)());
 void init_thread();
 void switch_thread(struct interrupt_frame *frame);
+void kill_running_thread(struct interrupt_frame *frame);
 void add_thread(thread_t *thread);
+void remove_thread();

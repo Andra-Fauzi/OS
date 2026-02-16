@@ -1,4 +1,4 @@
-#include "thread.h"
+#include "interrupt.h"
 
 #define LAPIC_EOI      0xB0
 
@@ -11,6 +11,17 @@ void sleep(uint64_t ms) {
 	}
 }
 
+void syscall_handler(struct interrupt_frame *frame) {
+    switch(frame->rax) {
+        case 60:
+            sys_exit(frame);
+        case 0:
+            sys_read(frame);
+        case 1:
+            sys_write(frame);
+    }
+}
+
 void isr_timer_modified(struct interrupt_frame *frame) {
     tick++;
     lapic_write(LAPIC_EOI, 0);
@@ -20,11 +31,15 @@ void isr_timer_modified(struct interrupt_frame *frame) {
 
 void init_interrupt() {
     // 64 is same as 0x40
-    set_idt_entry(0x40, timer_stub, 0x28, 0x8E);
+    set_idt_entry(0x40, timer_stub, 0x08, 0x8E);
+    set_idt_entry(128, syscall_stub, 0x08, 0xEE);
 }
 
 void interrupt_handler(struct interrupt_frame *frame) {
     if(frame->int_no == 64) {
         isr_timer_modified(frame);
+    }
+    if(frame->int_no == 128) {
+        syscall_handler(frame);
     }
 }
