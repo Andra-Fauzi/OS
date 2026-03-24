@@ -58,7 +58,7 @@ void test_ahci_read() {
         uint64_t buf_phys = allocate_frame();
         uint8_t *buf = (uint8_t*)PHYS_TO_VIRT(buf_phys);
         
-        bool success = ahci_read(sataport, 0, 0, 1, buf);
+        bool success = ahci_read(sataport, 0, 0, 1, (uint16_t*)buf);
         MBR_t *mbr = (MBR_t*)buf;
         partition_entry_t *partition = (partition_entry_t*)mbr->partition_table;
         

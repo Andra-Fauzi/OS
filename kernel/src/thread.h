@@ -8,6 +8,8 @@ typedef struct thread {
     bool lock;
     uint8_t fpu_state[512] __attribute__((aligned(16)));
     uint32_t pid;
+    void *stack_base;
+    bool free;
 } thread_t;
 
 

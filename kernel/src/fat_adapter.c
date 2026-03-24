@@ -76,7 +76,10 @@ void *fat_wrap_open(const char *path, int flags, size_t *size_of_file) {
             memset(new_entry.file_name, ' ', 11);
             int len = strlen(file_buf);
             if(len > 11) len = 11;
-            fat_translate(file_buf, &new_entry.file_name);
+            char filename[12];
+            memset(filename, ' ', 12);
+            memcpy(&filename, &new_entry.file_name, 11);
+            fat_translate(file_buf, filename);
             // memcpy(new_entry.file_name, file_buf, len);
             
             create_entry(parent_buf, &new_entry);

@@ -3,6 +3,7 @@
 #include "vfs.h"
 thread_t *main_thread = NULL;
 thread_t *running_thread = NULL;
+thread_t *thread_garbage = NULL;
 
 uint32_t PID_TOTAL = 0;
 
@@ -76,13 +77,21 @@ void create_thread(thread_t *thread, void (*func)()) {
     thread->frame.cs = 0x08;
     thread->frame.rflags = 0x202;
     // Increase stack size to 8KB
-    thread->frame.rsp = (uint64_t)malloc(8192, 16) + 8192;
+    thread->stack_base = malloc(8192, 16);
+    thread->frame.rsp = (uint64_t)thread->stack_base + 8192;
     thread->frame.ss = 0x10;
     thread->lock = false;
     memcpy(thread->fpu_state, initial_fpu_state, 512);
 }
 
 void switch_thread(struct interrupt_frame *frame) {
+    if(thread_garbage != NULL) {
+        // free((void *)(((uint8_t *)thread_garbage->frame.rsp) - 8192));
+        free(thread_garbage->stack_base);
+        thread_garbage->stack_base = NULL;
+        free(thread_garbage);
+        thread_garbage = NULL;
+    }
     if (running_thread == NULL) {
         return;
     }
@@ -110,14 +119,14 @@ void remove_thread() {
         asm volatile("sti");
         return;
     }
-
+    
     /* Find predecessor of the running thread in the circular list. */
     thread_t *prev = main_thread;
     if (prev == NULL) {
         asm volatile("sti");
         return;
     }
-
+    
     while (prev->next != running_thread) {
         prev = prev->next;
         if (prev == main_thread) {
@@ -126,13 +135,14 @@ void remove_thread() {
             return;
         }
     }
-
+    
     /* Unlink the running thread from the circular list.
-       Do NOT free the thread structure here: the thread is still running
-       on its stack and its state will be referenced by the next interrupt
-       / scheduler. Freeing now would lead to use-after-free. */
+    Do NOT free the thread structure here: the thread is still running
+    on its stack and its state will be referenced by the next interrupt
+    / scheduler. Freeing now would lead to use-after-free. */
     prev->next = running_thread->next;
-
+    thread_garbage = running_thread;
+    
     asm volatile("sti");
 }
 

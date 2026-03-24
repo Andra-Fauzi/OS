@@ -105,7 +105,7 @@ void kmain(void) {
 
     thread_t *t3 = (thread_t *)malloc(sizeof(thread_t), 16);
     create_thread(t3, test_elf);
-    add_thread(t3); 
+    add_thread(t3);
 
     extern uint32_t PID_TOTAL;
 
