@@ -35,6 +35,13 @@ typedef struct vfs_inode {
     size_t size;
 } vfs_inode_t;
 
+typedef struct vfs_file_desc {
+    vfs_inode_t *inode;
+    uint32_t offset;
+    int flags;
+    uint32_t ref_count;
+}
+
 typedef struct vfs_file {
     vfs_inode_t *inode;     // Pointer to the underlying inode
     uint32_t offset;        // Current file offset
