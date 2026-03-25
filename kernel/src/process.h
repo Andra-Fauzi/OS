@@ -18,13 +18,15 @@ typedef struct thread {
     struct thread *next;
     bool lock;
     uint8_t fpu_state[512] __attribute__((aligned(16)));
-    uint32_t pid;
+    uint32_t tid;
     void *stack_base;
     bool free;
 } thread_t;
 
 void total_process();
 void total_thread();
+void list_process();
+void list_thread();
 void create_process(process_t *process, void(*func)());
 void create_thread(thread_t *thread, void (*func)());
 void init_thread();

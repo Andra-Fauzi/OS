@@ -62,7 +62,7 @@ void init_thread() {
     // second_thread->next = main_thread;
     main_thread->next = main_thread;
     running_thread = main_thread;
-    main_thread->pid = PID_TOTAL;
+    main_thread->tid = PID_TOTAL;
     PID_TOTAL++;
     main_process->threads = main_thread;
     main_process->next = main_process;
@@ -114,7 +114,7 @@ void add_thread_to_pid(thread_t *thread, uint32_t pid_process) {
     while(ptr_thread->next != ptr_process->threads) {
         ptr_thread = ptr_thread->next;
     }
-    thread->pid = PID_TOTAL;
+    thread->tid = PID_TOTAL;
     ptr_thread->next = thread;
     thread->next = ptr_process->threads;
     PID_TOTAL++;
@@ -126,7 +126,7 @@ void add_thread(thread_t *thread, process_t *process) {
     if(process->threads == NULL) {
         process->threads = thread;
         thread->next = thread;
-        thread->pid = PID_TOTAL;
+        thread->tid = PID_TOTAL;
         PID_TOTAL++;
         unlock_process();
         return;
@@ -135,7 +135,7 @@ void add_thread(thread_t *thread, process_t *process) {
     while(ptr_thread->next != process->threads) {
         ptr_thread = ptr_thread->next;
     }
-    thread->pid = PID_TOTAL;
+    thread->tid = PID_TOTAL;
     ptr_thread->next = thread;
     thread->next = process->threads;
     PID_TOTAL++;
@@ -166,7 +166,7 @@ void create_process(process_t *process, void(*func)()) {
 
 void create_thread(thread_t *thread, void (*func)()) {
     lock_process();
-    thread->pid = 0;
+    thread->tid = 0;
     thread->frame.r15 = 0;
     thread->frame.r14 = 0;
     thread->frame.r13 = 0;
@@ -249,7 +249,7 @@ void remove_thread() {
         unlock_process();
         return;
     }
-    if (running_thread->pid == 0) {
+    if (running_thread->tid == 0) {
         unlock_process();
         return;
     }
@@ -328,7 +328,7 @@ void kill_running_thread(struct interrupt_frame *frame) {
         return;
     }
     /* Do not kill the main thread (pid 0) */
-    if (running_thread->pid == 0) {
+    if (running_thread->tid == 0) {
         printf("this thread is main thread\n");
         asm volatile("sti");
         return;
@@ -407,5 +407,47 @@ void total_thread() {
     }
 
     printf("total thread is %d\n", total);
+    unlock_process();
+}
+
+void list_process() {
+    lock_process();
+    process_t *prev = main_process;
+    if (prev == NULL) {
+        return;
+    }
+
+    int total = 1;
+    
+    printf("Process PID: %d\n", prev->pid);
+
+    while (prev->next != main_process) {
+        prev = prev->next;
+        printf("Process PID: %d\n", prev->pid);
+        total++;
+    }
+
+    printf("Total process is %d\n", total);
+    unlock_process();
+}
+
+void list_thread() {
+    lock_process();
+    thread_t *prev = main_thread;
+    if (prev == NULL) {
+        return;
+    }
+
+    int total = 1;
+    
+    printf("Thread TID: %d\n", prev->tid);
+    
+    while (prev->next != main_thread) {
+        prev = prev->next;
+        printf("Thread TID: %d\n", prev->tid);
+        total++;
+    }
+
+    printf("Total thread is %d\n", total);
     unlock_process();
 }

@@ -63,8 +63,8 @@ void second_task() {
     char buf[128];
     while(1) {
         printf("second thread\n");
-        total_thread();
-        total_process();
+        list_process();
+        list_thread();
         vfs_write(fd, "andra-os> ", 10);
         int bytes = vfs_read(fd, buf, 127);
         if (bytes > 0) {
