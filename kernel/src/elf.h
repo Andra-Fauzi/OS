@@ -51,4 +51,5 @@ typedef struct ELF_SECTION_HEADER {
     uint64_t entry_size;
 } ELF_SECTION_HEADER_t;
 
-void load_elf(const char *path);
+ELF_HEADER_t *load_elf(const char *path);
+void run_elf(ELF_HEADER_t *elf_header);

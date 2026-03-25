@@ -1,4 +1,7 @@
 #include "isr.h"
+#include "paging.h"
+#include "memory.h"
+#include "util.h"
 
 void isr_install() {
     set_idt_entry(0, (void *)isr0, 0x08, 0x8E);
@@ -36,6 +39,56 @@ void isr_install() {
 }
 
 void isr_handler(struct interrupt_frame* frame) {
+    if (frame->int_no == 14) {
+        uint64_t cr2;
+        __asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
+        
+        uint64_t err = frame->err;
+        // PF_PRESENT = 1 (bit 0), PF_WRITE = 2 (bit 1)
+        if ((err & 0x3) == 0x3) { // Present and Write fault
+            uint64_t *pml4 = get_pml4();
+            
+            size_t pml4_idx = (cr2 >> 39) & 0x1FF;
+            size_t pdpt_idx = (cr2 >> 30) & 0x1FF;
+            size_t pd_idx   = (cr2 >> 21) & 0x1FF;
+            size_t pt_idx   = (cr2 >> 12) & 0x1FF;
+            
+            if (pml4[pml4_idx] & PTE_PRESENT) {
+                uint64_t *pdpt = (uint64_t *)PHYS_TO_VIRT(pml4[pml4_idx] & PTE_ADDR_MASK);
+                if (pdpt[pdpt_idx] & PTE_PRESENT) {
+                    uint64_t *pd = (uint64_t *)PHYS_TO_VIRT(pdpt[pdpt_idx] & PTE_ADDR_MASK);
+                    if (pd[pd_idx] & PTE_PRESENT) {
+                        uint64_t *pt = (uint64_t *)PHYS_TO_VIRT(pd[pd_idx] & PTE_ADDR_MASK);
+                        if (pt[pt_idx] & PTE_PRESENT) {
+                            if (pt[pt_idx] & PTE_COW) {
+                                uint64_t old_phys = pt[pt_idx] & PTE_ADDR_MASK;
+                                uint16_t refs = get_frame_ref(old_phys);
+                                
+                                if (refs > 1) {
+                                    uint64_t new_phys = allocate_frame();
+                                    memcpy(PHYS_TO_VIRT(new_phys), PHYS_TO_VIRT(old_phys), 4096);
+                                    
+                                    dec_frame_ref(old_phys);
+                                    pt[pt_idx] = (pt[pt_idx] & ~PTE_ADDR_MASK) | new_phys;
+                                }
+                                
+                                pt[pt_idx] |= PTE_WRITABLE;
+                                pt[pt_idx] &= ~PTE_COW;
+                                
+                                asm volatile("invlpg (%0)" :: "r"(cr2) : "memory");
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        printf("Page Fault at %x\n", cr2);
+        printf("Error Code %x\n", frame->err);
+        while(1) asm volatile("hlt");
+    }
+
     printf("Interrupt %d\n", frame->int_no);
     printf("RIP : %x\n", frame->rip);
     while(1) asm volatile("hlt");

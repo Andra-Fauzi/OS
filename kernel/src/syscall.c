@@ -1,11 +1,14 @@
 #include "syscall.h"
+#include "elf.h"
 
 extern process_t *running_process;
+extern thread_t *running_thread;
+extern uint32_t PID_TOTAL;
 
 // PROCESS
 
 void sys_exit(struct interrupt_frame *frame) {
-    printf("\nUsermode Program Exited with status: %d\n", (int)frame->rbx);
+    printf("\nUsermode Program Exited with status: %d\n", (uint64_t)frame->rdi);
     // Untuk sekarang, kita tahan CPU atau bisa melakukan yield/penghancuran thread
     // switch_context(frame);
     remove_process();
@@ -18,12 +21,110 @@ void sys_exit(struct interrupt_frame *frame) {
     }
 }
 
-void sys_fork(struct interrupt_frame *frame) {
+#include "paging.h"
 
+void copy_page_tables(uint64_t *child_pml4, uint64_t *parent_pml4) {
+    // Copy kernel space (top half, entries 256-511)
+    for (int i = 256; i < 512; i++) {
+        child_pml4[i] = parent_pml4[i];
+    }
+
+    // COW copy user space
+    for (int i = 0; i < 256; i++) {
+        if (parent_pml4[i] & PTE_PRESENT) {
+            uint64_t *parent_pdpt = (uint64_t *)PHYS_TO_VIRT(parent_pml4[i] & PTE_ADDR_MASK);
+            uint64_t *child_pdpt = get_next_level(child_pml4, i);
+
+            for (int j = 0; j < 512; j++) {
+                if (parent_pdpt[j] & PTE_PRESENT) {
+                    uint64_t *parent_pd = (uint64_t *)PHYS_TO_VIRT(parent_pdpt[j] & PTE_ADDR_MASK);
+                    uint64_t *child_pd = get_next_level(child_pdpt, j);
+
+                    for (int k = 0; k < 512; k++) {
+                        if (parent_pd[k] & PTE_PRESENT) {
+                            if (parent_pd[k] & PTE_HUGE) {
+                                child_pd[k] = parent_pd[k]; 
+                                continue;
+                            }
+                            uint64_t *parent_pt = (uint64_t *)PHYS_TO_VIRT(parent_pd[k] & PTE_ADDR_MASK);
+                            uint64_t *child_pt = get_next_level(child_pd, k);
+
+                            for (int l = 0; l < 512; l++) {
+                                if (parent_pt[l] & PTE_PRESENT) {
+                                    // COW LOGIC
+                                    parent_pt[l] &= ~PTE_WRITABLE;
+                                    parent_pt[l] |= PTE_COW;
+                                    
+                                    child_pt[l] = parent_pt[l];
+
+                                    inc_frame_ref(parent_pt[l] & PTE_ADDR_MASK);
+                                    
+                                    // Invalidate TLB for parent
+                                    uint64_t vaddr = ((uint64_t)i << 39) | ((uint64_t)j << 30) | ((uint64_t)k << 21) | ((uint64_t)l << 12);
+                                    asm volatile("invlpg (%0)" :: "r"(vaddr) : "memory");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+mm_struct_t* clone_address_space(mm_struct_t *parent) {
+    mm_struct_t *child = malloc(sizeof(mm_struct_t), 16);
+    child->pml4 = PHYS_TO_VIRT(allocate_frame());
+
+    copy_page_tables(child->pml4, parent->pml4);
+
+    return child;
+}
+
+void sys_fork(struct interrupt_frame *frame) {
+    asm volatile("cli");
+    
+    process_t *child = malloc(sizeof(process_t), 16);
+    memcpy(child, running_process, sizeof(process_t));
+    
+    // Allocate new mm_struct for the child instead of sharing the parent's pointer
+    child->mm = clone_address_space(running_process->mm);
+    
+    child->pid = PID_TOTAL++;
+    
+    thread_t *child_thread = malloc(sizeof(thread_t), 16);
+    memcpy(child_thread, running_thread, sizeof(thread_t));
+
+    // Fix: Allocate unique kernel stack for the child
+    child_thread->stack_base = malloc(8192, 16);
+
+    // Update child thread frame with the current syscall context
+    child_thread->frame = *frame;
+    child_thread->frame.rax = 0; // Child returns 0
+    frame->rax = child->pid;     // Parent returns child PID
+
+    child->threads = child_thread;
+    child_thread->next = child_thread;
+
+    add_process(child);
+    asm volatile("sti");
 }
 
 void sys_execve(struct interrupt_frame *frame) {
+    const char *path = (char *)frame->rdi;
 
+    ELF_HEADER_t *elf_header = load_elf(path);
+    if(elf_header == NULL) {
+        frame->rax = -1;
+        return;
+    }
+    free(running_thread->stack_base);
+    running_thread->stack_base = malloc(8192, 16);
+    frame->rsp = (uint64_t)running_thread->stack_base + 8192;
+
+    frame->rip = (uint64_t)elf_header->entry_point;
+    frame->rax = 0;
+    return;
 }
 
 void sys_waitpid(struct interrupt_frame *frame) {

@@ -104,6 +104,7 @@ $(IMAGE_NAME).hdd: limine/limine kernel
 	mcopy -i $(IMAGE_NAME).hdd@@1M limine/BOOTX64.EFI ::/EFI/BOOT
 	mcopy -i $(IMAGE_NAME).hdd@@1M limine/BOOTIA32.EFI ::/EFI/BOOT
 	mcopy -i $(IMAGE_NAME).hdd@@1M kernel/test/t_elf.elf ::/ELF_TEST
+	mcopy -i $(IMAGE_NAME).hdd@@1M kernel/test/s_elf.elf ::/S_TEST
 
 .PHONY: clean
 clean:

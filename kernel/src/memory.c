@@ -23,6 +23,9 @@ static size_t current_region = 0;
 
 #define FRAME_SIZE 4096
 
+static uint16_t *frame_refs = NULL;
+static uint64_t max_phys_global = 0;
+
 static volatile int malloc_lock = 0;
 
 static void lock_malloc() {
@@ -48,6 +51,9 @@ void frame_allocator_init(void) {
 				usable_regions[usable_region_count++] = e;
 			}
 		}
+        if (e->base + e->length > max_phys_global) {
+            max_phys_global = e->base + e->length;
+        }
 	}
 	if(usable_region_count > 0) {
 		next_frame_addr = usable_regions[0]->base;
@@ -55,6 +61,21 @@ void frame_allocator_init(void) {
 			next_frame_addr = 0x100000;
 		}
 	}
+
+    if (max_phys_global > 0) {
+        uint64_t num_frames = max_phys_global / 4096;
+        uint64_t refs_size = num_frames * sizeof(uint16_t);
+        uint64_t first_frame = allocate_frame();
+        if (first_frame != 0) {
+            frame_refs = (uint16_t*)PHYS_TO_VIRT(first_frame);
+            for(uint64_t size = 4096; size < refs_size; size += 4096) {
+                allocate_frame(); 
+            }
+            for (uint64_t i = 0; i < num_frames; i++) {
+                frame_refs[i] = 1;
+            }
+        }
+    }
 }
 
 uint64_t allocate_frame(void) {
@@ -74,7 +95,10 @@ uint64_t allocate_frame(void) {
 	    for(int i = 0; i < 512; i++) {
 		    v[i] = 0;
 	    }
-            return frame;
+        if (frame_refs && (frame / 4096) < (max_phys_global / 4096)) {
+            frame_refs[frame / 4096] = 1;
+        }
+        return frame;
         }
 
         // region ini habis → pindah ke region berikutnya
@@ -115,14 +139,17 @@ void *malloc(uint64_t size, uint64_t alignment) {
 
 	while(ptr != NULL) {
 		if(ptr->free == true && ptr->size >= size) {
-			ptr->free = false;  // Mark as used
-			// Zero out the reused block
-			uint8_t *v = (uint8_t *)(ptr + 1);
-			for(uint64_t i = 0; i < ptr->size; i++) {
-				v[i] = 0;
-			}
-            unlock_malloc();
-			return (void *)v;
+            uint64_t data_ptr = (uint64_t)(ptr + 1);
+            if ((data_ptr & (alignment - 1)) == 0) {
+                ptr->free = false;  // Mark as used
+                // Zero out the reused block
+                uint8_t *v = (uint8_t *)(ptr + 1);
+                for(uint64_t i = 0; i < ptr->size; i++) {
+                    v[i] = 0;
+                }
+                unlock_malloc();
+                return (void *)v;
+            }
 		}
 		ptr = ptr->next;
 	}
@@ -171,4 +198,23 @@ void free(void *ptr) {
 	block_t *real_ptr = ptr_block - 1;
 	real_ptr->free = true;
     unlock_malloc();
+}
+
+void inc_frame_ref(uint64_t phys) {
+    if (frame_refs && (phys / 4096) < (max_phys_global / 4096)) {
+        __atomic_add_fetch(&frame_refs[phys / 4096], 1, __ATOMIC_SEQ_CST);
+    }
+}
+
+void dec_frame_ref(uint64_t phys) {
+    if (frame_refs && (phys / 4096) < (max_phys_global / 4096)) {
+        __atomic_sub_fetch(&frame_refs[phys / 4096], 1, __ATOMIC_SEQ_CST);
+    }
+}
+
+uint16_t get_frame_ref(uint64_t phys) {
+    if (frame_refs && (phys / 4096) < (max_phys_global / 4096)) {
+        return __atomic_load_n(&frame_refs[phys / 4096], __ATOMIC_SEQ_CST);
+    }
+    return 1;
 }

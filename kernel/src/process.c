@@ -50,6 +50,8 @@ void init_thread() {
     init_fpu_state_buffer();
     main_process = (process_t *)malloc(sizeof(process_t), 16);
     main_process->pid = PID_TOTAL;
+    main_process->mm = (mm_struct_t *)malloc(sizeof(mm_struct_t), 16);
+    main_process->mm->pml4 = get_pml4();
     PID_TOTAL++;
     main_thread = (thread_t *)malloc(sizeof(thread_t), 16);
     memcpy(main_thread->fpu_state, initial_fpu_state, 512);
@@ -90,10 +92,9 @@ void add_process(process_t *process) {
         }
         ptr_process = ptr_process->next;
     } while(ptr_process != main_process);
-    process->pid = PID_TOTAL;
+    
     ptr_process->next = process;
     process->next = main_process;
-    PID_TOTAL++;
     unlock_process();
 }
 
@@ -149,6 +150,8 @@ void create_process(process_t *process, void(*func)()) {
     PID_TOTAL++;
     process->threads = NULL;
     process->next = NULL;
+    process->mm = (mm_struct_t *)malloc(sizeof(mm_struct_t), 16);
+    process->mm->pml4 = get_pml4();
     thread_t *thread = (thread_t *)malloc(sizeof(thread_t), 16);
     thread->next = thread;
     create_thread(thread, func);
@@ -199,13 +202,13 @@ void create_thread(thread_t *thread, void (*func)()) {
 
 void switch_context(struct interrupt_frame *frame) {
     lock_process();
-
+    
     if(thread_garbage != NULL) {
         free(thread_garbage->stack_base);
         free(thread_garbage);
         thread_garbage = NULL;
     }
-
+    
     if(process_garbage != NULL) {
         thread_t *ptr_thread = process_garbage->threads;
         while(ptr_thread->next != process_garbage->threads) {
@@ -219,30 +222,41 @@ void switch_context(struct interrupt_frame *frame) {
         free(process_garbage);
         process_garbage = NULL;
     }
-
+    
     if (!running_thread || running_thread->lock) {
         unlock_process();
         return;
     }
-
+    
     // Save current thread
     __asm__ volatile("fxsave %0" : : "m"(running_thread->fpu_state));
     running_thread->frame = *frame;
-
+    
     // Move to next thread
     thread_t *start = running_process->threads;
     running_thread = running_thread->next;
-
+    
     // If we looped back → switch process
     if (running_thread == start) {
         running_process = running_process->next;
         running_thread = running_process->threads;
     }
-
+    
     // Load next thread
     *frame = running_thread->frame;
-    __asm__ volatile("fxrstor %0" : : "m"(running_thread->fpu_state));
+    
+    // DEBUG: print context switch info
+    // printf("Switch to PID %d, TID %d, IP %x, RAX %x\n", 
+    //        running_process->pid, running_thread->tid, frame->rip, frame->rax);
 
+    if ((uint64_t)running_thread->fpu_state % 16 != 0) {
+        printf("PANIC: fpu_state is unaligned! %x\n", (uint64_t)running_thread->fpu_state);
+        while(1) asm volatile("hlt");
+    }
+
+    __asm__ volatile("fxrstor %0" : : "m"(running_thread->fpu_state));
+    
+    load_cr3(VIRT_TO_PHYS(running_process->mm->pml4));
     unlock_process();
 }
 

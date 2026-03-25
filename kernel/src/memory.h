@@ -10,5 +10,8 @@ typedef struct block {
 
 void frame_allocator_init(void);
 uint64_t allocate_frame(void);
+void inc_frame_ref(uint64_t phys);
+void dec_frame_ref(uint64_t phys);
+uint16_t get_frame_ref(uint64_t phys);
 void *malloc(uint64_t size, uint64_t alignment);
 void free(void *ptr);

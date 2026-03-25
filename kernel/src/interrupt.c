@@ -15,72 +15,73 @@ void syscall_handler(struct interrupt_frame *frame) {
     switch(frame->rax) {
         case 60:
             sys_exit(frame);
-            break;
+            return;
         case 0:
             sys_read(frame);
-            break;
+            return;
         case 1:
             sys_write(frame);
-            break;
+            return;
         case 2:
             sys_open(frame);
-            break;
+            return;
         case 3:
             sys_close(frame);
-            break;
+            return;
         case 4:
             sys_stat(frame);
-            break;
+            return;
         case 5:
             sys_fstat(frame);
-            break;
+            return;
         case 8:
             sys_lseek(frame);
-            break;
+            return;
         case 7:
             sys_waitpid(frame);
+            return;
         case 57:
             sys_fork(frame);
-            break;
+            return;
         case 59:
             sys_execve(frame);
-            break;
+            return;
         case 9:
             sys_mmap(frame);
-            break;
+            return;
         case 32:
             sys_dup(frame);
-            break;
+            return;
         case 33:
             sys_dup2(frame);
-            break;
+            return;
         case 22:
             sys_pipe(frame);
-            break;
+            return;
         case 80:
             sys_chdir(frame);
-            break;
+            return;
         case 183:
             sys_getcwd(frame);
-            break;
+            return;
         case 67:
             sys_sigaction(frame);
-            break;
+            return;
         case 62:
             sys_kill(frame);
-            break;
+            return;
         case 35:
             sys_nanosleep(frame);
-            break;
+            return;
         case 228:
             sys_clock_gettime(frame);
-            break;
+            return;
         case 16:
             sys_ioctl(frame);
-            break;
+            return;
         case 72:
             sys_fcntl(frame);
-            break;
+            return;
     }
 }
 

@@ -2,6 +2,11 @@
 #include <stdint.h>
 #include "isr.h"
 #include "vfs.h"
+#include "paging.h"
+
+typedef struct mm_struct {
+    uint64_t *pml4;
+} mm_struct_t;
 
 typedef struct process {
     uint32_t pid;
@@ -11,6 +16,7 @@ typedef struct process {
     struct thread *threads;
     struct process *next;
     bool free;
+    mm_struct_t *mm;
 } process_t;
 
 typedef struct thread {

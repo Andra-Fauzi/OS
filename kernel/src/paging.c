@@ -144,3 +144,7 @@ void enable_paging(uint64_t *pml4) {
 	uint64_t pml4_phys = (uint64_t)pml4 - hhdm_request.response->offset;
 	asm volatile("mov %0, %%cr3" :: "r"(pml4_phys) : "memory");
 }
+
+void load_cr3(uint64_t pml4_phys) {
+    __asm__ volatile("mov %0, %%cr3" :: "r"(pml4_phys) : "memory");
+}

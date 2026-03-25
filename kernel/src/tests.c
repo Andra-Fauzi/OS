@@ -78,7 +78,8 @@ void test_ahci_read() {
 }
 
 void test_elf() {
-    load_elf("/ELF_TEST/T_ELF.ELF");
+    ELF_HEADER_t *elf_header = load_elf("/ELF_TEST/T_ELF.ELF");
+    run_elf(elf_header);
 }
 
 void test_vfs_readdir() {

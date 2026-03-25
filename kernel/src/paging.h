@@ -9,6 +9,7 @@ uint64_t *init_paging();
 void enable_paging(uint64_t *pml4);
 uint64_t *get_pml4();
 void map_page_huge(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t flags);
+void load_cr3(uint64_t pml4_phys);
 
 #include <limine.h>
 extern volatile struct limine_hhdm_request hhdm_request;
@@ -24,6 +25,7 @@ extern volatile struct limine_hhdm_request hhdm_request;
 #define PTE_DIRTY (1ULL << 6)
 #define PTE_HUGE (1ULL << 7)
 #define PTE_GLOBAL (1ULL << 8)
+#define PTE_COW (1ULL << 9)
 #define PTE_ADDR_MASK 0x000ffffffffff000ULL
 
 #define PAGE_SIZE 4096ULL

@@ -8,6 +8,7 @@ section .data
     data db 'halo andra ganteng sigma ohio', 0xa
     data_len equ $ - data
     path2 db '/ELF_TEST', 0 ; test read
+    path3 db '/S_TEST', 0 ; test execve
 
 section .text
     global _start                   ; Declare _start as the program entry point
@@ -44,6 +45,10 @@ _start:
     int 128                         ; invoke the kernel
 
     ;jmp $
+
+    mov rax, 59
+    lea rdi, path3
+    int 128
 
     ; --- exit syscall ---
     mov rax, 60                     ; syscall number 60 for sys_exit
