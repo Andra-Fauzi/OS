@@ -43,6 +43,7 @@ void *fat_wrap_open(const char *path, int flags, size_t *size_of_file, uint32_t 
         file->isdir = true;
         file->cluster = cluster;
         *ino = cluster;
+        *type = 1;
         return (void*)file;
     }
 
@@ -101,8 +102,10 @@ void *fat_wrap_open(const char *path, int flags, size_t *size_of_file, uint32_t 
         file->isroot = false;
         if(entry->attribute_file == 0x10) {
             file->isdir = true;
+            *type = 1;
         } else {
             file->isdir = false;
+            *type = 0;
         }
         file->cluster = cluster;
         *size_of_file = entry->size_file;
@@ -338,6 +341,10 @@ int fat_wrap_rmdir(void *fs_file, const char *name) {
     return 0;
 }
 
+int fat_wrap_ioctl(void *fs_file, int request, void *arg) {
+
+}
+
 static fs_operations_t fat_ops = {
     .open = fat_wrap_open,
     .close = fat_wrap_close,
@@ -348,7 +355,8 @@ static fs_operations_t fat_ops = {
     .mkdir = fat_wrap_mkdir,
     .create = fat_wrap_create,
     .rm = fat_wrap_rm,
-    .rmdir = fat_wrap_rmdir
+    .rmdir = fat_wrap_rmdir,
+    .ioctl = fat_wrap_ioctl
 };
 
 fs_operations_t *fat_get_operations() {

@@ -68,11 +68,16 @@ int terminal_write(void *fs_file, const void *buf, size_t size, uint32_t offset)
     return size;
 }
 
+int terminal_ioctl(void *fs_file, int request, void *arg) {
+    
+}
+
 static fs_operations_t terminal_ops = {
     .open = terminal_open,
     .close = terminal_close,
     .read = terminal_read,
-    .write = terminal_write
+    .write = terminal_write,
+    .ioctl = terminal_ioctl
 };
 
 void vfs_terminal_init() {

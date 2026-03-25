@@ -65,7 +65,7 @@ void vfs_init() {
     printf("VFS Initialized.\n");
 }
 
-static vfs_inode_t* vfs_allocate_inode(mountpoint_t *mp, void *fs_data, size_t size_of_file, uint32_t ino, uint32_t type) {
+vfs_inode_t* vfs_allocate_inode(mountpoint_t *mp, void *fs_data, size_t size_of_file, uint32_t ino, uint32_t type) {
     // For now, always allocate a new one (simpler)
     for (int i = 0; i < MAX_INODES; i++) {
         if (!inode_pool[i].used) {
@@ -81,7 +81,7 @@ static vfs_inode_t* vfs_allocate_inode(mountpoint_t *mp, void *fs_data, size_t s
     return NULL;
 }
 
-static void vfs_free_inode(vfs_inode_t *inode) {
+void vfs_free_inode(vfs_inode_t *inode) {
     if (!inode) return;
     if (--inode->ref_count == 0) {
         if (inode->mp && inode->mp->operations && inode->mp->operations->close) {
@@ -551,4 +551,50 @@ int vfs_pipe(int *pipefd) {
 
     unlock_process();
     return 0;
+}
+
+int vfs_ioctl(int fd, int request, void *arg) {
+    lock_process();
+    if(fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
+        return -1;
+    }
+
+    vfs_file_t *f = &running_process->open_files[fd];
+    vfs_inode_t *inode = f->desc->inode;
+    if(inode && inode->mp && inode->mp->operations && inode->mp->operations->ioctl) {
+        int result = inode->mp->operations->ioctl(inode->fs_file_data, request, arg);
+        unlock_process();
+        return result;
+    }
+    unlock_process();
+    return -1;
+}
+
+#define F_DUPFD   0
+#define F_GETFL   3
+#define F_SETFL   4
+
+int vfs_fcntl(int fd, int cmd, uint64_t arg) {
+    lock_process();
+
+    vfs_file_t *f = &running_process->open_files[fd];
+    switch(cmd) {
+        case F_DUPFD:
+            int newfd = vfs_dup2(fd, arg);
+            unlock_process();
+            return newfd;
+        case F_GETFL:
+            int flags = f->desc->flags;
+            unlock_process();
+            return flags;
+        case F_SETFL:
+            f->desc->flags = flags;
+            unlock_process();
+            return 0;
+
+    }
+
+    unlock_process();
+    return -1;
 }

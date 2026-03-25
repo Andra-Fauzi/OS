@@ -67,6 +67,7 @@ void init_thread() {
     main_process->threads = main_thread;
     main_process->next = main_process;
     running_process = main_process;
+    strcpy(main_process->cwd, "/");
     // stdin/stdout cannot be opened here because VFS is not mounted yet.
     // Call init_process_stdio() after vfs_setup_mounts().
     unlock_process();
@@ -152,7 +153,9 @@ void create_process(process_t *process, void(*func)()) {
     thread->next = thread;
     create_thread(thread, func);
     add_thread(thread, process);
-
+    
+    strcpy(process->cwd, "/");
+    
     // Temporarily redirect running_process to the new process so that
     // vfs_open places the file descriptors into its open_files[] table.
     process_t *saved_process = running_process;
@@ -160,7 +163,7 @@ void create_process(process_t *process, void(*func)()) {
     vfs_open("/dev/tty", O_RDONLY);  // FD 0 -> stdin
     vfs_open("/dev/tty", O_WRONLY);  // FD 1 -> stdout
     running_process = saved_process;
-
+    
     unlock_process();
 }
 

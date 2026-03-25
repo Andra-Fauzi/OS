@@ -93,6 +93,7 @@ struct fs_operations {
     int (*rm)(void *fs_file, const char *name);
     int (*readdir)(void *fs_file, vfs_dirent_t *dirent, uint32_t offset);
     int (*finddir)(void *fs_file, const char *name, vfs_dirent_t *dirent);
+    int (*ioctl)(void *fs_file, int request, void *arg);
 };
 
 typedef struct fs_operations fs_operations_t;
@@ -116,6 +117,10 @@ int vfs_dup(int fd);
 int vfs_dup2(int oldfd, int newfd);
 int vfs_pipe(int *pipefd);
 vfs_file_desc_t* vfs_allocate_descriptor(vfs_inode_t *inode, int flags);
+int vfs_ioctl(int fd, int request, void *arg);
+int vfs_fcntl(int fd, int cmd, uint64_t arg);
+vfs_inode_t* vfs_allocate_inode(mountpoint_t *mp, void *fs_data, size_t size_of_file, uint32_t ino, uint32_t type);
+void vfs_free_inode(vfs_inode_t *inode);
 
 // Pipe
 fs_operations_t *pipe_get_operations();

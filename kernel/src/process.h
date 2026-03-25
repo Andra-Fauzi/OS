@@ -6,7 +6,7 @@
 typedef struct process {
     uint32_t pid;
 
-    char cwd[256];
+    char cwd[VFS_PATH_LENGTH];
     vfs_file_t open_files[MAX_OPEN_FILES];
     struct thread *threads;
     struct process *next;
