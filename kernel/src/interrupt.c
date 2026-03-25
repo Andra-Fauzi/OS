@@ -88,7 +88,7 @@ void isr_timer_modified(struct interrupt_frame *frame) {
     tick++;
     lapic_write(LAPIC_EOI, 0);
     // printf("berubah\n");
-    switch_thread(frame);
+    switch_context(frame);
 }
 
 void init_interrupt() {

@@ -64,6 +64,7 @@ void second_task() {
     while(1) {
         printf("second thread\n");
         total_thread();
+        total_process();
         vfs_write(fd, "andra-os> ", 10);
         int bytes = vfs_read(fd, buf, 127);
         if (bytes > 0) {
@@ -102,21 +103,23 @@ void kmain(void) {
     print_str("Kernel initialization complete. Interrupts are ON.\n");
 
     // Start Example Threads
-    thread_t *t1 = (thread_t *)malloc(sizeof(thread_t), 16);
-    create_thread(t1, first_task);
-    add_thread(t1);
+    process_t *p1 = (process_t *)malloc(sizeof(process_t), 16);
+    create_process(p1, first_task);
+    add_process(p1);
 
-    thread_t *t2 = (thread_t *)malloc(sizeof(thread_t), 16);
-    create_thread(t2, second_task);
-    add_thread(t2); 
+    process_t *p2 = (process_t *)malloc(sizeof(process_t), 16);
+    create_process(p2, second_task);
+    add_process(p2); 
 
     extern void test_elf();
 
-    thread_t *t3 = (thread_t *)malloc(sizeof(thread_t), 16);
-    create_thread(t3, test_elf);
-    add_thread(t3);
+    process_t *p3 = (process_t *)malloc(sizeof(process_t), 16);
+    create_process(p3, test_elf);
+    add_process(p3);
 
     extern uint32_t PID_TOTAL;
+
+    asm volatile("sti");
 
     // run_diagnostic_tests();
 

@@ -5,8 +5,8 @@
 void sys_exit(struct interrupt_frame *frame) {
     printf("\nUsermode Program Exited with status: %d\n", (int)frame->rbx);
     // Untuk sekarang, kita tahan CPU atau bisa melakukan yield/penghancuran thread
-    // switch_thread(frame);
-    remove_thread();
+    // switch_context(frame);
+    remove_process();
     // kill_running_thread(frame);
     // asm volatile("int $0x40");
     while(1) {
