@@ -1,4 +1,4 @@
-#include "thread.h"
+#include "process.h"
 #include "ehci.h"
 #include "vfs.h"
 thread_t *main_thread = NULL;

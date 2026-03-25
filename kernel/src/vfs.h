@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #define MAX_MOUNTPOINTS 10
+#define MAX_FILE_DESCRIPTORS 128
 #define MAX_OPEN_FILES 128
 #define VFS_PATH_LENGTH 128
 #define VFS_TYPE_LENGTH 32
@@ -17,6 +18,9 @@
 #define MAX_INODES 256
 
 // Forward declaration
+
+typedef uint16_t umode_t;  // 16-bit type for file mode (type + permissions)
+
 struct fs_operations;
 
 typedef struct mountpoint {
@@ -30,22 +34,23 @@ typedef struct mountpoint {
 typedef struct vfs_inode {
     mountpoint_t *mp;       // Mountpoint this inode belongs to
     void *fs_file_data;     // FS-specific data
-    uint32_t ref_count;     // Reference count (how many open files point to this)
-    bool used;              // Is this slot in the pool used?
+    uint32_t ref_count;     // Reference count (how many files descriptors point to this)
+    bool used;
+    uint32_t type; // 0 for file, 1 for directory              // Is this slot in the pool used?
     size_t size;
+    uint32_t ino; // inode number (unique ID) // i dont know just use the clusters in FAT or anything that unique
 } vfs_inode_t;
 
 typedef struct vfs_file_desc {
-    vfs_inode_t *inode;
-    uint32_t offset;
-    int flags;
-    uint32_t ref_count;
-}
-
-typedef struct vfs_file {
     vfs_inode_t *inode;     // Pointer to the underlying inode
     uint32_t offset;        // Current file offset
     int flags;              // Open flags
+    uint32_t ref_count; // Reference count (how much files point to this)
+    bool used;
+} vfs_file_desc_t;
+
+typedef struct vfs_file {
+    vfs_file_desc_t *desc;
     bool used;              // Is this FD slot used?
 } vfs_file_t;
 
@@ -56,9 +61,29 @@ typedef struct vfs_dirent {
     size_t size;
 } vfs_dirent_t;
 
+typedef struct stat {
+    uint64_t st_ino;
+    umode_t st_mode;
+    uint64_t st_size;
+    uint32_t st_uid;
+    uint32_t st_gid;
+    uint32_t st_nlink;
+    uint64_t st_atime;
+    uint64_t st_mtime;
+    uint64_t st_ctime;
+} stat_t;
+
+#define PIPE_BUFFER_SIZE 4096
+
+typedef struct pipe {
+    uint8_t buffer[PIPE_BUFFER_SIZE];
+    size_t read_offset;
+    size_t write_offset;
+} pipe_t;
+
 struct fs_operations {
     // Open returns a void* which represents the FS-specific file handle/data
-    void* (*open)(const char *path, int flags, size_t *size_of_file);
+    void* (*open)(const char *path, int flags, size_t *size_of_file, uint32_t *ino, uint32_t *type);
     void (*close)(void *fs_file);
     int (*read)(void *fs_file, void *buf, size_t size, uint32_t offset);
     int (*write)(void *fs_file, const void *buf, size_t size, uint32_t offset);
@@ -85,3 +110,11 @@ int vfs_readdir(int fd, vfs_dirent_t *dirent);
 int vfs_finddir(int fd, const char *name, vfs_dirent_t *dirent);
 int vfs_seek(int fd, size_t offset);
 int vfs_mkdir(int fd, const char *name);
+int vfs_stat(const char *path, stat_t *st);
+int vfs_fstat(int fd, stat_t *st);
+int vfs_dup(int fd);
+int vfs_dup2(int oldfd, int newfd);
+int vfs_pipe(int *pipefd);
+
+// Pipe
+fs_operations_t *pipe_get_operations();

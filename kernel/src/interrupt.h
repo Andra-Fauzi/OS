@@ -1,7 +1,7 @@
 #pragma once
 #include "apic.h"
 #include "isr.h"
-#include "thread.h"
+#include "process.h"
 #include "idt.h"
 #include "terminal.h"
 #include "syscall.h"

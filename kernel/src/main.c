@@ -8,7 +8,7 @@
 #include "tests.h"
 #include "util.h"
 #include "terminal.h"
-#include "thread.h"
+#include "process.h"
 #include "vfs.h"
 
 // Limine base revision
@@ -59,7 +59,7 @@ void second_task() {
     }
 
     extern void total_thread();
-
+    int root_fd = vfs_open("/", O_RDWR);
     char buf[128];
     while(1) {
         printf("second thread\n");
@@ -72,6 +72,15 @@ void second_task() {
             vfs_write(fd, buf, bytes);
             vfs_write(fd, "\n", 1);
         }
+        printf("readdir '/'\n");
+        vfs_dirent_t dirent;
+        int result = vfs_readdir(root_fd, &dirent); 
+        printf("result is %d\nfd is %d\n", (uint64_t)result, (uint64_t)root_fd);
+        while(result > -1) {
+            printf("name: %s, ino: %d\n", dirent.name, dirent.ino);
+            result = vfs_readdir(root_fd, &dirent);
+        }
+        vfs_seek(root_fd, 0);
     }
 }
 
@@ -108,6 +117,8 @@ void kmain(void) {
     add_thread(t3);
 
     extern uint32_t PID_TOTAL;
+
+    // run_diagnostic_tests();
 
     // Main loop
     while(1) {

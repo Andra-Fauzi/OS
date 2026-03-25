@@ -15,10 +15,72 @@ void syscall_handler(struct interrupt_frame *frame) {
     switch(frame->rax) {
         case 60:
             sys_exit(frame);
+            break;
         case 0:
             sys_read(frame);
+            break;
         case 1:
             sys_write(frame);
+            break;
+        case 2:
+            sys_open(frame);
+            break;
+        case 3:
+            sys_close(frame);
+            break;
+        case 4:
+            sys_stat(frame);
+            break;
+        case 5:
+            sys_fstat(frame);
+            break;
+        case 8:
+            sys_lseek(frame);
+            break;
+        case 7:
+            sys_waitpid(frame);
+        case 57:
+            sys_fork(frame);
+            break;
+        case 59:
+            sys_execve(frame);
+            break;
+        case 9:
+            sys_mmap(frame);
+            break;
+        case 32:
+            sys_dup(frame);
+            break;
+        case 33:
+            sys_dup2(frame);
+            break;
+        case 22:
+            sys_pipe(frame);
+            break;
+        case 80:
+            sys_chdir(frame);
+            break;
+        case 183:
+            sys_getcwd(frame);
+            break;
+        case 67:
+            sys_sigaction(frame);
+            break;
+        case 62:
+            sys_kill(frame);
+            break;
+        case 35:
+            sys_nanosleep(frame);
+            break;
+        case 228:
+            sys_clock_gettime(frame);
+            break;
+        case 16:
+            sys_ioctl(frame);
+            break;
+        case 72:
+            sys_fcntl(frame);
+            break;
     }
 }
 

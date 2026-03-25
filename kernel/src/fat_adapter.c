@@ -29,7 +29,7 @@ static void fat_translate(const char *name, char new_name[12]) {
     new_name[11] = '\0';
 }
 
-void *fat_wrap_open(const char *path, int flags, size_t *size_of_file) {
+void *fat_wrap_open(const char *path, int flags, size_t *size_of_file, uint32_t *ino, uint32_t *type) {
     
     *size_of_file = 0;
     uint32_t cluster = -1;
@@ -42,6 +42,7 @@ void *fat_wrap_open(const char *path, int flags, size_t *size_of_file) {
         file->isroot = true;
         file->isdir = true;
         file->cluster = cluster;
+        *ino = cluster;
         return (void*)file;
     }
 
@@ -80,11 +81,14 @@ void *fat_wrap_open(const char *path, int flags, size_t *size_of_file) {
             memset(filename, ' ', 12);
             memcpy(&filename, &new_entry.file_name, 11);
             fat_translate(file_buf, filename);
-            // memcpy(new_entry.file_name, file_buf, len);
+            printf("filename is %s\n", filename);
+            printf("file_buf is %s\n", file_buf);
+            memcpy(new_entry.file_name, filename, 11);
             
             create_entry(parent_buf, &new_entry);
             
             // Try getting it again
+            printf("path is %s\n", path);
             entry = get_entry_with_path(path, &cluster);
         }
     }
@@ -102,6 +106,8 @@ void *fat_wrap_open(const char *path, int flags, size_t *size_of_file) {
         }
         file->cluster = cluster;
         *size_of_file = entry->size_file;
+        *ino = cluster;
+
         free(entry); // Free the entry allocated by get_entry_with_path
         return (void*)file;
     }

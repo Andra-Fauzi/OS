@@ -133,7 +133,7 @@ void lapic_timer_init(void) {
     lapic_write(LAPIC_LVT_TIMER, 0x20000 | 0x40);
 
     /* initial count (1 ms) */
-    lapic_write(LAPIC_TIMER_INIT, 0x10000);
+    lapic_write(LAPIC_TIMER_INIT, 0x100000);
 }
 
 

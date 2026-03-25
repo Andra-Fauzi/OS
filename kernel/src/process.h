@@ -2,6 +2,12 @@
 #include <stdint.h>
 #include "isr.h"
 
+typedef struct process {
+    uint32_t pid;
+    struct thread *threads;
+    struct process *next;
+} process_t;
+
 typedef struct thread {
     struct interrupt_frame frame;
     struct thread *next;

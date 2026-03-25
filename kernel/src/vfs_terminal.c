@@ -3,11 +3,16 @@
 #include "terminal.h"
 #include "util.h" // for NULL
 
+static uint32_t count = 0;
+
 // Terminal Open: returns dummy pointer (singleton device)
-void* terminal_open(const char *path, int flags, size_t *size_of_file) {
+void* terminal_open(const char *path, int flags, size_t *size_of_file, uint32_t *ino, uint32_t *type) {
     (void)path; 
     (void)flags;
     (void)size_of_file;
+    *ino = count;
+    *type = 0;
+    count += 1;
     return (void*)1; 
 }
 
