@@ -115,6 +115,7 @@ int vfs_fstat(int fd, stat_t *st);
 int vfs_dup(int fd);
 int vfs_dup2(int oldfd, int newfd);
 int vfs_pipe(int *pipefd);
+vfs_file_desc_t* vfs_allocate_descriptor(vfs_inode_t *inode, int flags);
 
 // Pipe
 fs_operations_t *pipe_get_operations();

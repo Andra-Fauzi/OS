@@ -90,6 +90,8 @@ void kmain(void) {
     check_limine_revision(limine_base_revision);
     get_framebuffer(&framebuffer_request);
 
+    asm volatile("cli");
+
     // Core System Init
     sys_init();
     
@@ -98,6 +100,9 @@ void kmain(void) {
     
     // File System Setup
     vfs_setup_mounts();
+
+    // Open stdin/stdout for main_process now that /dev/tty is mounted
+    init_process_stdio();
 
     asm volatile("sti");
     print_str("Kernel initialization complete. Interrupts are ON.\n");

@@ -7,7 +7,17 @@
 static mountpoint_t mountpoints[MAX_MOUNTPOINTS];
 static vfs_inode_t inode_pool[MAX_INODES];
 static vfs_file_desc_t file_descriptors[MAX_FILE_DESCRIPTORS];
-static vfs_file_t open_files[MAX_OPEN_FILES];
+// static vfs_file_t open_files[MAX_OPEN_FILES];
+
+extern process_t *running_process;
+
+static void lock_process() {
+    asm volatile("cli");
+}
+
+static void unlock_process() {
+    asm volatile("sti");
+}
 
 // Helper: Custom strncmp since it might not be in util.h or main.h
 static int vfs_strncmp(const char *s1, const char *s2, size_t n) {
@@ -27,6 +37,7 @@ static void vfs_strcpy(char *dest, const char *src) {
 }
 
 void vfs_init() {
+    lock_process();
     printf("Initializing VFS...\n");
     // Clear mountpoints
     for (int i = 0; i < MAX_MOUNTPOINTS; i++) {
@@ -48,8 +59,8 @@ void vfs_init() {
     }
     // Clear open files
     for (int i = 0; i < MAX_OPEN_FILES; i++) {
-        open_files[i].used = false;
-        open_files[i].desc = NULL;
+        running_process->open_files[i].used = false;
+        running_process->open_files[i].desc = NULL;
     }
     printf("VFS Initialized.\n");
 }
@@ -82,7 +93,7 @@ static void vfs_free_inode(vfs_inode_t *inode) {
     }
 }
 
-static vfs_file_desc_t* vfs_allocate_descriptor(vfs_inode_t *inode, int flags) {
+vfs_file_desc_t* vfs_allocate_descriptor(vfs_inode_t *inode, int flags) {
     // For now, always allocate a new one (simpler)
     for (int i = 0; i < MAX_FILE_DESCRIPTORS; i++) {
         if (!file_descriptors[i].used) {
@@ -191,20 +202,24 @@ vfs_inode_t* vfs_lookup(const char *path, int flags) {
 }
 
 int vfs_open(const char *path, int flags) {
+    lock_process();
     vfs_inode_t *inode = vfs_lookup(path, flags);
     if (!inode) {
+        unlock_process();
         return -1;
     }
 
     vfs_file_desc_t *desc = vfs_allocate_descriptor(inode, flags);
     if (!desc) {
+        unlock_process();
         return -1;
     }
 
     for (int i = 0; i < MAX_OPEN_FILES; i++) {
-        if (!open_files[i].used) {
-            open_files[i].used = true;
-            open_files[i].desc = desc;
+        if (!running_process->open_files[i].used) {
+            running_process->open_files[i].used = true;
+            running_process->open_files[i].desc = desc;
+            unlock_process();
             return i; // Return FD
         }
     }
@@ -212,152 +227,199 @@ int vfs_open(const char *path, int flags) {
     printf("VFS Error: Too many open files.\n");
     vfs_free_inode(inode);
     vfs_free_descriptor(desc);
+    unlock_process();
     return -1;
 }
 
 int vfs_close(int fd) {
-    if (fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used) {
+    lock_process();
+    if (fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     vfs_free_descriptor(f->desc);
     
     f->used = false;
     f->desc = NULL;
+    unlock_process();
     return 0;
 }
 
 int vfs_read(int fd, void *buf, size_t size) {
-    if (fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used || !(open_files[fd].desc->flags & O_RDONLY)) {
+    lock_process();
+    if (fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used || !(running_process->open_files[fd].desc->flags & O_RDONLY)) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     vfs_inode_t *inode = f->desc->inode;
     if (inode && inode->mp && inode->mp->operations && inode->mp->operations->read) {
         int bytes_read = inode->mp->operations->read(inode->fs_file_data, buf, size, f->desc->offset);
         if (bytes_read > 0) {
             f->desc->offset += bytes_read;
         }
+        unlock_process();
         return bytes_read;
     }
+    unlock_process();
     return -1;
 }
 
 int vfs_write(int fd, const void *buf, size_t size) {
-    if (fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used || !(open_files[fd].desc->flags & O_WRONLY)) {
+    lock_process();
+    if (fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used || !(running_process->open_files[fd].desc->flags & O_WRONLY)) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     vfs_inode_t *inode = f->desc->inode;
     if (inode && inode->mp && inode->mp->operations && inode->mp->operations->write) {
         int bytes_written = inode->mp->operations->write(inode->fs_file_data, buf, size, f->desc->offset);
         if (bytes_written > 0) {
             f->desc->offset += bytes_written;
         }
+        unlock_process();
         return bytes_written;
     }
+    unlock_process();
     return -1;
 }
 
 int vfs_seek(int fd, size_t offset) {
-    if (fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used) {
+    lock_process();
+    if (fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     f->desc->offset = offset;
+    unlock_process();
     return 0;
 }
 
 int vfs_readdir(int fd, vfs_dirent_t *dirent) {
-    if (fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used) {
+    lock_process();
+    if (fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     vfs_inode_t *inode = f->desc->inode;
     if (inode && inode->mp && inode->mp->operations && inode->mp->operations->readdir) {
         int res = inode->mp->operations->readdir(inode->fs_file_data, dirent, f->desc->offset);
         if (res == 0) {
             f->desc->offset++; // Move to next entry
+            unlock_process();
             return 0;
         }
+        unlock_process();
         return res;
     }
+    unlock_process();
     return -1;
 }
 
 int vfs_finddir(int fd, const char *name, vfs_dirent_t *dirent) {
-    if (fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used) {
+    lock_process();
+    if (fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     vfs_inode_t *inode = f->desc->inode;
     if (inode && inode->mp && inode->mp->operations && inode->mp->operations->finddir) {
-        return inode->mp->operations->finddir(inode->fs_file_data, name, dirent);
+        int res = inode->mp->operations->finddir(inode->fs_file_data, name, dirent);
+        unlock_process();
+        return res;
     }
+    unlock_process();
     return -1;
 }
 
 int vfs_mkdir(int fd, const char *name) {
-    if(fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used) {
+    lock_process();
+    if(fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     vfs_inode_t *inode = f->desc->inode;
     if(inode && inode->mp && inode->mp->operations && inode->mp->operations->mkdir) {
-        return inode->mp->operations->mkdir(inode->fs_file_data, name);
+        int res = inode->mp->operations->mkdir(inode->fs_file_data, name);
+        unlock_process();
+        return res;
     }
+    unlock_process();
     return -1;
 }
 
 int vfs_rmdir(int fd, const char *name) {
-    if(fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used) {
+    lock_process();
+    if(fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     vfs_inode_t *inode = f->desc->inode;
     if(inode && inode->mp && inode->mp->operations && inode->mp->operations->mkdir) {
-        return inode->mp->operations->rmdir(inode->fs_file_data, name);
+        int res = inode->mp->operations->rmdir(inode->fs_file_data, name);
+        unlock_process();
+        return res;
     }
+    unlock_process();
     return -1;
 }
 
 int vfs_rm(int fd, const char *name) {
-    if(fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used) {
+    lock_process();
+    if(fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     vfs_inode_t *inode = f->desc->inode;
     if(inode && inode->mp && inode->mp->operations && inode->mp->operations->mkdir) {
-        return inode->mp->operations->rm(inode->fs_file_data, name);
+        int res = inode->mp->operations->rm(inode->fs_file_data, name);
+        unlock_process();
+        return res;
     }
+    unlock_process();
     return -1;
 }
 
 int vfs_create(int fd, const char *name) {
-    if(fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used) {
+    lock_process();
+    if(fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     vfs_inode_t *inode = f->desc->inode;
     if(inode && inode->mp && inode->mp->operations && inode->mp->operations->mkdir) {
-        return inode->mp->operations->create(inode->fs_file_data, name);
+        int res = inode->mp->operations->create(inode->fs_file_data, name);
+        unlock_process();
+        return res;
     }
+    unlock_process();
     return -1;
 }
 
 int vfs_stat(const char *path, stat_t *st) {
+    lock_process();
     vfs_inode_t *inode = vfs_lookup(path, 0);
     if (!inode) {
+        unlock_process();
         return -1;
     }
     st->st_ino = inode->ino;
@@ -370,15 +432,18 @@ int vfs_stat(const char *path, stat_t *st) {
     st->st_mtime = 0;
     st->st_ctime = 0;
     vfs_free_inode(inode);
+    unlock_process();
     return 0;
 }
 
 int vfs_fstat(int fd, stat_t *st) {
-    if(fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used) {
+    lock_process();
+    if(fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     vfs_inode_t *inode = f->desc->inode;
     st->st_ino = inode->ino;
     st->st_mode = inode->type;
@@ -389,82 +454,94 @@ int vfs_fstat(int fd, stat_t *st) {
     st->st_atime = 0;
     st->st_mtime = 0;
     st->st_ctime = 0;
+    unlock_process();
     return 0;
 }
 
 int vfs_dup(int fd) {
-    if(fd < 0 || fd >= MAX_OPEN_FILES || !open_files[fd].used) {
+    lock_process();
+    if(fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[fd];
+    vfs_file_t *f = &running_process->open_files[fd];
     vfs_file_desc_t *desc = f->desc;
 
     for(int i = 0; i < MAX_OPEN_FILES; i++) {
-        if(!open_files[i].used) {
-            open_files[i].used = true;
-            open_files[i].desc = desc;
+        if(!running_process->open_files[i].used) {
+            running_process->open_files[i].used = true;
+            running_process->open_files[i].desc = desc;
             desc->ref_count++;
+            unlock_process();
             return i;
         }
     }
-    
+    unlock_process();
     return -1;
 }
 
 int vfs_dup2(int oldfd, int newfd) {
-    if(oldfd < 0 || oldfd >= MAX_OPEN_FILES || !open_files[oldfd].used) {
+    lock_process();
+    if(oldfd < 0 || oldfd >= MAX_OPEN_FILES || !running_process->open_files[oldfd].used) {
+        unlock_process();
         return -1;
     }
 
-    if(newfd < 0 || newfd >= MAX_OPEN_FILES || !open_files[newfd].used) {
+    if(newfd < 0 || newfd >= MAX_OPEN_FILES || !running_process->open_files[newfd].used) {
+        unlock_process();
         return -1;
     }
 
-    vfs_file_t *f = &open_files[oldfd];
+    vfs_file_t *f = &running_process->open_files[oldfd];
     vfs_file_desc_t *desc = f->desc;
 
-    vfs_file_t *f2 = &open_files[newfd];
+    vfs_file_t *f2 = &running_process->open_files[newfd];
     vfs_file_desc_t *desc2 = f2->desc;
 
     vfs_free_descriptor(desc2);
 
     f2->desc = desc;
     desc->ref_count++;
+    unlock_process();
     return newfd;
 }
 
 static mountpoint_t pipemp;
 
 int vfs_pipe(int *pipefd) {
+    unlock_process();
     memcpy(pipemp.fs_type, "FS_PIPE", 8);
     pipemp.operations = pipe_get_operations();
     
     vfs_inode_t *inode = vfs_allocate_inode(&pipemp, malloc(sizeof(pipe_t), 4), 0, 0, 0);
     if(!inode) {
+        unlock_process();
         return -1;
     }
     for(int i = 0; i < MAX_OPEN_FILES; i++) {
-        if(!open_files[i].used) {
+        if(!running_process->open_files[i].used) {
            pipefd[0] = i;
            vfs_file_desc_t *desc = vfs_allocate_descriptor(inode, O_RDONLY);
            if(!desc) {
+                unlock_process();
                 return -1;
            }
-           open_files[i].used = true;
-           open_files[i].desc = desc;
+           running_process->open_files[i].used = true;
+           running_process->open_files[i].desc = desc;
         }
     }
     
     for(int i = 0; i < MAX_OPEN_FILES; i++) {
-        if(!open_files[i].used) {
+        if(!running_process->open_files[i].used) {
             pipefd[1] = i;
             vfs_file_desc_t *desc = vfs_allocate_descriptor(inode, O_WRONLY);
             if(!desc) {
+                unlock_process();
                 return -1;
             }
-           open_files[i].used = true;
-           open_files[i].desc = desc;
+           running_process->open_files[i].used = true;
+           running_process->open_files[i].desc = desc;
         }
     }
 
@@ -472,5 +549,6 @@ int vfs_pipe(int *pipefd) {
     pipe->read_offset = 0;
     pipe->write_offset = 0;
 
+    unlock_process();
     return 0;
 }

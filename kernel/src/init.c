@@ -92,6 +92,4 @@ void vfs_setup_mounts() {
     vfs_mount("/", "disk0", "fat32", fat_ops);
     // vfs_mount("/dev/sda", "/", "fat32", fat_ops);
     vfs_mount("/dev/tty", "terminal", "tty", vfs_terminal_get_ops());
-    int stdin = vfs_open("/dev/tty", O_RDONLY);
-    int stdout = vfs_open("/dev/tty", O_WRONLY);
 }

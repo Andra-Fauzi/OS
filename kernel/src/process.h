@@ -1,10 +1,13 @@
 #pragma once
 #include <stdint.h>
 #include "isr.h"
+#include "vfs.h"
 
 typedef struct process {
     uint32_t pid;
 
+    char cwd[256];
+    vfs_file_t open_files[MAX_OPEN_FILES];
     struct thread *threads;
     struct process *next;
     bool free;
@@ -25,14 +28,13 @@ void total_thread();
 void create_process(process_t *process, void(*func)());
 void create_thread(thread_t *thread, void (*func)());
 void init_thread();
+void init_process_stdio();
 void switch_context(struct interrupt_frame *frame);
 void kill_running_thread(struct interrupt_frame *frame);
 void add_thread_to_pid(thread_t *thread, uint32_t pid_process);
 void add_process(process_t *process);
 void remove_process();
 void remove_thread();
-void lock_process();
-void unlock_process();
 void add_thread(thread_t *thread, process_t *process);
 
 /*

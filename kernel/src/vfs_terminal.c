@@ -48,7 +48,9 @@ int terminal_read(void *fs_file, void *buf, size_t size, uint32_t offset) {
                  break;
              }
         } else {
-            asm volatile("hlt");
+            // vfs_read holds cli; we must re-enable interrupts so the
+            // keyboard IRQ can fire, then go back to sleep, then re-disable.
+            asm volatile("sti; hlt; cli");
         }
         // Busy wait if no character available
     }

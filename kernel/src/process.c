@@ -12,11 +12,11 @@ thread_t *thread_garbage = NULL;
 
 uint32_t PID_TOTAL = 0;
 
-void lock_process() {
+static void lock_process() {
     asm volatile("cli");
 }
 
-void unlock_process() {
+static void unlock_process() {
     asm volatile("sti");
 }
 
@@ -67,7 +67,17 @@ void init_thread() {
     main_process->threads = main_thread;
     main_process->next = main_process;
     running_process = main_process;
+    // stdin/stdout cannot be opened here because VFS is not mounted yet.
+    // Call init_process_stdio() after vfs_setup_mounts().
     unlock_process();
+}
+
+// Call this once after vfs_setup_mounts() to open stdin/stdout for main_process.
+void init_process_stdio() {
+    // vfs_open writes into running_process->open_files[] directly.
+    // running_process == main_process here, so FD 0 and 1 land correctly.
+    vfs_open("/dev/tty", O_RDONLY);  // FD 0 -> stdin
+    vfs_open("/dev/tty", O_WRONLY);  // FD 1 -> stdout
 }
 
 void add_process(process_t *process) {
@@ -142,6 +152,15 @@ void create_process(process_t *process, void(*func)()) {
     thread->next = thread;
     create_thread(thread, func);
     add_thread(thread, process);
+
+    // Temporarily redirect running_process to the new process so that
+    // vfs_open places the file descriptors into its open_files[] table.
+    process_t *saved_process = running_process;
+    running_process = process;
+    vfs_open("/dev/tty", O_RDONLY);  // FD 0 -> stdin
+    vfs_open("/dev/tty", O_WRONLY);  // FD 1 -> stdout
+    running_process = saved_process;
+
     unlock_process();
 }
 
