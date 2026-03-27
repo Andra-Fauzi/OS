@@ -58,3 +58,4 @@ extern struct tss64 tss;
 void gdt_init();
 void gdt_reload(struct gdtr* gdt_ptr);
 void tss_load();
+void update_tss_rsp0(uint64_t rsp0);

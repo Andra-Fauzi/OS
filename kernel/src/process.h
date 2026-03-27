@@ -4,11 +4,11 @@
 #include "vfs.h"
 #include "paging.h"
 
-typedef struct mm_struct {
+typedef struct __attribute__((packed)) mm_struct {
     uint64_t *pml4;
 } mm_struct_t;
 
-typedef struct process {
+typedef struct __attribute__((packed)) process {
     uint32_t pid;
 
     char cwd[VFS_PATH_LENGTH];
@@ -19,7 +19,7 @@ typedef struct process {
     mm_struct_t *mm;
 } process_t;
 
-typedef struct thread {
+typedef struct __attribute__((packed)) thread {
     struct interrupt_frame frame;
     struct thread *next;
     bool lock;
@@ -44,6 +44,7 @@ void add_process(process_t *process);
 void remove_process();
 void remove_thread();
 void add_thread(thread_t *thread, process_t *process);
+mm_struct_t *create_empty_mm();
 
 /*
 +------------------------------------------------------+

@@ -78,7 +78,7 @@ void test_ahci_read() {
 }
 
 void test_elf() {
-    ELF_HEADER_t *elf_header = load_elf("/ELF_TEST/T_ELF.ELF");
+    ELF_HEADER_t *elf_header = load_elf("/ELF_TEST/T_ELF.ELF", get_pml4());
     run_elf(elf_header);
 }
 

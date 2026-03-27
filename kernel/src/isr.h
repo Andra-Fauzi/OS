@@ -6,7 +6,7 @@ struct interrupt_frame {
     uint64_t rsi, rdi, rbp, rdx, rcx, rbx, rax;
     uint64_t int_no, err;
     uint64_t rip, cs, rflags, rsp, ss;
-};
+} __attribute__((packed));
 
 #include "idt.h"
 #include "terminal.h"

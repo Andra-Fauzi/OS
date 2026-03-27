@@ -3,6 +3,7 @@
 
 extern process_t *running_process;
 extern thread_t *running_thread;
+extern process_t *main_process;
 extern uint32_t PID_TOTAL;
 
 // PROCESS
@@ -97,38 +98,97 @@ void sys_fork(struct interrupt_frame *frame) {
 
     // Fix: Allocate unique kernel stack for the child
     child_thread->stack_base = malloc(8192, 16);
+    memcpy(child_thread->fpu_state, running_thread->fpu_state, 512);
+    memcpy(&child_thread->frame, frame, sizeof(struct interrupt_frame));
+    memcpy(child_thread->stack_base, running_thread->stack_base, 8192);
+    // child_thread->frame.rsp = (uint64_t)child_thread->stack_base + 8192;
 
     // Update child thread frame with the current syscall context
-    child_thread->frame = *frame;
-    child_thread->frame.rax = 0; // Child returns 0
-    frame->rax = child->pid;     // Parent returns child PID
-
+    // child_thread->frame = *frame;
+    
     child->threads = child_thread;
     child_thread->next = child_thread;
-
+    
+    
     add_process(child);
+    frame->rax = child->pid;     // Parent returns child PID
+    child_thread->frame.rax = (uint64_t)0; // Child returns 0
+    
+    // printf("Forked new process with PID: %d\n", child->pid);
+    // printf("Child thread frame rax: %d\n rbx: %d\n rcx: %d\n rdx: %d\n rsi: %d\n rdi: %d\n", 
+    //     (uint64_t)child_thread->frame.rax, (uint64_t)child_thread->frame.rbx, (uint64_t)child_thread->frame.rcx, 
+    //     (uint64_t)child_thread->frame.rdx, (uint64_t)child_thread->frame.rsi, (uint64_t)child_thread->frame.rdi);
     asm volatile("sti");
 }
 
 void sys_execve(struct interrupt_frame *frame) {
     const char *path = (char *)frame->rdi;
 
-    ELF_HEADER_t *elf_header = load_elf(path);
+    // Create new address space
+    mm_struct_t *new_mm = create_empty_mm();
+
+    // Load ELF into the new address space
+    // We pass the new PML4 so that load_elf maps segments there
+    ELF_HEADER_t *elf_header = load_elf(path, new_mm->pml4);
     if(elf_header == NULL) {
+        // TODO: cleanup new_mm
         frame->rax = -1;
         return;
     }
-    free(running_thread->stack_base);
-    running_thread->stack_base = malloc(8192, 16);
-    frame->rsp = (uint64_t)running_thread->stack_base + 8192;
 
+    // Switch the process to the new address space
+    // In a real OS, we would free the old mm here.
+    running_process->mm = new_mm;
+    load_cr3(VIRT_TO_PHYS(new_mm->pml4));
+
+    // Allocate and map a fresh user stack
+    uint64_t stack_phys = allocate_frame();
+    uint64_t stack_virt = 0x70000000000;
+    map_page(new_mm->pml4, stack_virt, stack_phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+
+    // Set up the interrupt frame to return to the new entry point
     frame->rip = (uint64_t)elf_header->entry_point;
+    frame->rsp = stack_virt + 4096;
     frame->rax = 0;
-    return;
+
+    // Clean up the temporary header
+    free(elf_header);
 }
 
 void sys_waitpid(struct interrupt_frame *frame) {
-    
+    printf("sys_waitpid called with PID: %d\n", (uint64_t)frame->rdi);
+    while(1) {
+        int found = 0;
+        asm volatile("cli");
+        process_t *prev = main_process;
+        if (prev == NULL) {
+            asm volatile("sti");
+            frame->rax = -1;
+            return;
+        }
+
+        while (prev->next != main_process) {
+            if (prev->pid == frame->rdi) {
+                found = 1;
+                break;
+            }
+            prev = prev->next;
+        }
+        if (prev->pid == frame->rdi) {
+            found = 1;
+        }
+        asm volatile("sti");
+
+        if (!found) {
+            frame->rax = -1; // No such child
+            return;
+        }
+
+        // Return PID of the child that is found. 
+        // For now, simpler implementation just to unblock the caller.
+        // frame->rax = frame->rdi;
+        // return;
+    }
 }
 
 // FILE I/O

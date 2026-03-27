@@ -1,6 +1,7 @@
 #include "process.h"
 #include "ehci.h"
 #include "vfs.h"
+#include "gdt.h"
 
 process_t *main_process = NULL;
 process_t *running_process = NULL;
@@ -81,6 +82,22 @@ void init_process_stdio() {
     // running_process == main_process here, so FD 0 and 1 land correctly.
     vfs_open("/dev/tty", O_RDONLY);  // FD 0 -> stdin
     vfs_open("/dev/tty", O_WRONLY);  // FD 1 -> stdout
+}
+
+mm_struct_t *create_empty_mm() {
+    mm_struct_t *mm = malloc(sizeof(mm_struct_t), 16);
+    mm->pml4 = PHYS_TO_VIRT(allocate_frame());
+    
+    // Copy kernel mappings from current PML4
+    uint64_t *current_pml4 = get_pml4();
+    for (int i = 256; i < 512; i++) {
+        mm->pml4[i] = current_pml4[i];
+    }
+    
+    // Identity map lower 2MB (optional, for compatibility)
+    // Actually, paging.c does this.
+    
+    return mm;
 }
 
 void add_process(process_t *process) {
@@ -200,6 +217,26 @@ void create_thread(thread_t *thread, void (*func)()) {
     unlock_process();
 }
 
+void find_process_by_pid(uint32_t pid, process_t **process) {
+    lock_process();
+    process_t *ptr_process = main_process;
+    while(ptr_process->next != main_process) {
+        if(ptr_process->pid == pid) {
+            *process = ptr_process;
+            unlock_process();
+            return;
+        }
+        ptr_process = ptr_process->next;
+    }
+    if(ptr_process->pid == pid) {
+        *process = ptr_process;
+        unlock_process();
+        return;
+    }
+    *process = NULL;
+    unlock_process();
+}
+
 void switch_context(struct interrupt_frame *frame) {
     lock_process();
     
@@ -240,10 +277,12 @@ void switch_context(struct interrupt_frame *frame) {
     if (running_thread == start) {
         running_process = running_process->next;
         running_thread = running_process->threads;
+        main_thread = running_thread; // Update main_thread to the new process's main thread
     }
     
     // Load next thread
     *frame = running_thread->frame;
+    update_tss_rsp0((uint64_t)running_thread->stack_base + 8192);
     
     // DEBUG: print context switch info
     // printf("Switch to PID %d, TID %d, IP %x, RAX %x\n", 

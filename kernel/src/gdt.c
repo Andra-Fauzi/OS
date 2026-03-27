@@ -69,3 +69,7 @@ void gdt_init() {
     gdt_reload(&gdt_ptr);
     tss_load();
 }
+
+void update_tss_rsp0(uint64_t rsp0) {
+    tss.rsp0 = rsp0;
+}

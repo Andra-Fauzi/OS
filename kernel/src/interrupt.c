@@ -12,76 +12,84 @@ void sleep(uint64_t ms) {
 }
 
 void syscall_handler(struct interrupt_frame *frame) {
+    // if (frame->rax != 1) { // Skip write to reduce noise
+        // printf("sys_no: %d, rdi: %d, rsi: %x, rdx: %x, rbx: %x, rcx: %x\n", 
+            //    frame->rax, frame->rdi, frame->rsi, frame->rdx, frame->rbx, frame->rcx);
+    // }
+
     switch(frame->rax) {
+        case 255:
+            printf("rax is %d\n", frame->rdi);
+            break;
         case 60:
             sys_exit(frame);
-            return;
+            break;
         case 0:
             sys_read(frame);
-            return;
+            break;
         case 1:
             sys_write(frame);
-            return;
+            break;
         case 2:
             sys_open(frame);
-            return;
+            break;
         case 3:
             sys_close(frame);
-            return;
+            break;
         case 4:
             sys_stat(frame);
-            return;
+            break;
         case 5:
             sys_fstat(frame);
-            return;
+            break;
         case 8:
             sys_lseek(frame);
-            return;
-        case 7:
+            break;
+        case 61:
             sys_waitpid(frame);
-            return;
+            break;
         case 57:
             sys_fork(frame);
-            return;
+            break;
         case 59:
             sys_execve(frame);
-            return;
+            break;
         case 9:
             sys_mmap(frame);
-            return;
+            break;
         case 32:
             sys_dup(frame);
-            return;
+            break;
         case 33:
             sys_dup2(frame);
-            return;
+            break;
         case 22:
             sys_pipe(frame);
-            return;
+            break;
         case 80:
             sys_chdir(frame);
-            return;
+            break;
         case 183:
             sys_getcwd(frame);
-            return;
+            break;
         case 67:
             sys_sigaction(frame);
-            return;
+            break;
         case 62:
             sys_kill(frame);
-            return;
+            break;
         case 35:
             sys_nanosleep(frame);
-            return;
+            break;
         case 228:
             sys_clock_gettime(frame);
-            return;
+            break;
         case 16:
             sys_ioctl(frame);
-            return;
+            break;
         case 72:
             sys_fcntl(frame);
-            return;
+            break;
     }
 }
 
@@ -99,10 +107,11 @@ void init_interrupt() {
 }
 
 void interrupt_handler(struct interrupt_frame *frame) {
-    if(frame->int_no == 64) {
+    uint64_t vector = frame->int_no;
+    if(vector == 64) {
         isr_timer_modified(frame);
-    }
-    if(frame->int_no == 128) {
+    } 
+    else if(vector == 128) {
         syscall_handler(frame);
     }
 }

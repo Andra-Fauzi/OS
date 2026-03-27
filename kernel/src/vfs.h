@@ -23,7 +23,7 @@ typedef uint16_t umode_t;  // 16-bit type for file mode (type + permissions)
 
 struct fs_operations;
 
-typedef struct mountpoint {
+typedef struct __attribute__((packed)) mountpoint {
     char path[VFS_PATH_LENGTH];
     char device[VFS_PATH_LENGTH];
     char fs_type[VFS_TYPE_LENGTH];
@@ -31,7 +31,7 @@ typedef struct mountpoint {
     bool used;
 } mountpoint_t;
 
-typedef struct vfs_inode {
+typedef struct __attribute__((packed)) vfs_inode {
     mountpoint_t *mp;       // Mountpoint this inode belongs to
     void *fs_file_data;     // FS-specific data
     uint32_t ref_count;     // Reference count (how many files descriptors point to this)
@@ -41,7 +41,7 @@ typedef struct vfs_inode {
     uint32_t ino; // inode number (unique ID) // i dont know just use the clusters in FAT or anything that unique
 } vfs_inode_t;
 
-typedef struct vfs_file_desc {
+typedef struct __attribute__((packed)) vfs_file_desc {
     vfs_inode_t *inode;     // Pointer to the underlying inode
     uint32_t offset;        // Current file offset
     int flags;              // Open flags
@@ -49,7 +49,7 @@ typedef struct vfs_file_desc {
     bool used;
 } vfs_file_desc_t;
 
-typedef struct vfs_file {
+typedef struct __attribute__((packed)) vfs_file {
     vfs_file_desc_t *desc;
     bool used;              // Is this FD slot used?
 } vfs_file_t;
