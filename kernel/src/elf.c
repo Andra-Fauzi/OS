@@ -110,16 +110,24 @@ ELF_HEADER_t *load_elf(const char *path, uint64_t *pml4) {
 
 void run_elf(ELF_HEADER_t *elf_header) {
     uint64_t *pml4 = get_pml4();
-    printf("start program at %x\n", elf_header->entry_point);
+    printf("start program at 0x%x\n", elf_header->entry_point);
     
     // Allocate and map user stack
-    uint64_t stack_phys = allocate_frame();
-    uint64_t stack_virt = 0x70000000000; // Choose a high virtual address for user stack
-    map_page(pml4, stack_virt, stack_phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+    uint64_t stack_virt = USER_STACK_BASE;
+    for(uint64_t offset = 0; offset < USER_STACK_SIZE; offset += PAGE_SIZE) {
+        uint64_t phys = allocate_frame();
+        if (phys == 0) {
+            printf("Failed to allocate frame for user stack!\n");
+            return;
+        }
+        map_page(pml4, stack_virt + offset, phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+        memset(PHYS_TO_VIRT(phys), 0, PAGE_SIZE);
+    }
     
-    printf("User stack at %x (phys %x)\n", stack_virt, stack_phys);
+    printf("User stack mapped from 0x%x to 0x%x\n", stack_virt, USER_STACK_TOP);
+    
     // Jump to usermode with RSP pointing to the TOP of the stack
     printf("starting\n");
-    jump_to_usermode(elf_header->entry_point, stack_virt + 4096);
+    jump_to_usermode(elf_header->entry_point, USER_STACK_TOP);
     printf("end program\n");
 }

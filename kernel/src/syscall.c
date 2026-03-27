@@ -90,6 +90,11 @@ void sys_fork(struct interrupt_frame *frame) {
     
     // Allocate new mm_struct for the child instead of sharing the parent's pointer
     child->mm = clone_address_space(running_process->mm);
+    child->mm->heap_start = USER_HEAP_BASE;
+    child->mm->heap_end = USER_HEAP_TOP;
+    child->mm->stack_base = USER_STACK_BASE;
+    child->mm->stack_top = USER_STACK_TOP;
+    child->mm->heap_current = running_process->mm->heap_current;
     
     child->pid = PID_TOTAL++;
     
@@ -122,6 +127,7 @@ void sys_fork(struct interrupt_frame *frame) {
 }
 
 void sys_execve(struct interrupt_frame *frame) {
+    asm volatile("cli");
     const char *path = (char *)frame->rdi;
 
     // Create new address space
@@ -133,30 +139,37 @@ void sys_execve(struct interrupt_frame *frame) {
     if(elf_header == NULL) {
         // TODO: cleanup new_mm
         frame->rax = -1;
+        asm volatile("sti");
         return;
     }
 
     // Switch the process to the new address space
     // In a real OS, we would free the old mm here.
     running_process->mm = new_mm;
+    running_process->mm->heap_start = USER_HEAP_BASE;
+    running_process->mm->heap_end = USER_HEAP_TOP;
+    running_process->mm->stack_base = USER_STACK_BASE;
+    running_process->mm->stack_top = USER_STACK_TOP;
+    running_process->mm->heap_current = USER_HEAP_BASE;
     load_cr3(VIRT_TO_PHYS(new_mm->pml4));
 
     // Allocate and map a fresh user stack
-    uint64_t stack_phys = allocate_frame();
-    uint64_t stack_virt = 0x70000000000;
+    uint64_t stack_phys = allocate_frame(); // 4096 bytes
+    uint64_t stack_virt = USER_STACK_BASE;
     map_page(new_mm->pml4, stack_virt, stack_phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
 
     // Set up the interrupt frame to return to the new entry point
     frame->rip = (uint64_t)elf_header->entry_point;
-    frame->rsp = stack_virt + 4096;
+    frame->rsp = USER_STACK_TOP;
     frame->rax = 0;
 
     // Clean up the temporary header
     free(elf_header);
+    asm volatile("sti");
 }
 
 void sys_waitpid(struct interrupt_frame *frame) {
-    printf("sys_waitpid called with PID: %d\n", (uint64_t)frame->rdi);
+    // printf("sys_waitpid called with PID: %d\n", (uint64_t)frame->rdi);
     while(1) {
         int found = 0;
         asm volatile("cli");
@@ -181,6 +194,7 @@ void sys_waitpid(struct interrupt_frame *frame) {
 
         if (!found) {
             frame->rax = -1; // No such child
+            asm volatile("sti");
             return;
         }
 
@@ -189,23 +203,41 @@ void sys_waitpid(struct interrupt_frame *frame) {
         // frame->rax = frame->rdi;
         // return;
     }
+    asm volatile("sti");
+}
+
+void sys_getpid(struct interrupt_frame *frame) {
+    asm volatile("cli");
+    frame->rax = (uint64_t)running_process->pid;
+    asm volatile("sti");
+    return;
 }
 
 // FILE I/O
 
 void sys_read(struct interrupt_frame *frame) {
+    running_thread->lock = true;
+    asm volatile("cli");
     int result = vfs_read(frame->rdi, (void *)frame->rsi, frame->rdx);
     frame->rax = result;
+    asm volatile("sti");
+    running_thread->lock = false;
     return;
 }
 
 void sys_write(struct interrupt_frame *frame) {
+    running_thread->lock = true;
+    asm volatile("cli");
     int result = vfs_write(frame->rdi, (void *)frame->rsi, frame->rdx);
     frame->rax = result;
+    asm volatile("sti");
+    running_thread->lock = false;
     return;
 }
 
 void sys_open(struct interrupt_frame *frame) {
+    running_thread->lock = true;
+    asm volatile("cli");
     const char *user_path = (const char *)frame->rdi;
     char final_path[VFS_PATH_LENGTH];
     if (user_path[0] == '/') {
@@ -218,64 +250,128 @@ void sys_open(struct interrupt_frame *frame) {
     }
     int result = vfs_open((const char*)final_path, frame->rsi);
     frame->rax = result;
+    asm volatile("sti");
+    running_thread->lock = false;
     return;
 }
 
 void sys_close(struct interrupt_frame *frame) {
+    running_thread->lock = true;
+    asm volatile("cli");
     int result = vfs_close(frame->rdi);
     frame->rax = result;
+    asm volatile("sti");
+    running_thread->lock = false;
     return;
 }
 
 void sys_lseek(struct interrupt_frame *frame) {
+    asm volatile("cli");
     int result = vfs_seek(frame->rdi, frame->rsi);
     frame->rax = result;
+    asm volatile("sti");
     return;
 }
 
 // FILE INFO
 
 void sys_stat(struct interrupt_frame *frame) {
+    asm volatile("cli");
     int result = vfs_stat((const char *)frame->rdi, (struct stat *)frame->rsi);
     frame->rax = result;
+    asm volatile("sti");
     return;
 }
 
 void sys_fstat(struct interrupt_frame *frame) {
+    asm volatile("cli");
     int result = vfs_fstat(frame->rdi, (struct stat *)frame->rsi);
     frame->rax = result;
+    asm volatile("sti");
     return;
 }
 
 // MEMORY
 
 void sys_mmap(struct interrupt_frame *frame) {
-    
+}
+
+void sys_sbrk(struct interrupt_frame *frame) {
+    asm volatile("cli");
+    int64_t increment = (int64_t)frame->rdi;
+    mm_struct_t *mm = running_process->mm;
+    uint64_t old_brk = mm->heap_current;
+
+    if (increment == 0) {
+        frame->rax = old_brk;
+        asm volatile("sti");
+        return;
+    }
+
+    if (increment > 0) {
+        uint64_t new_brk = old_brk + (uint64_t)increment;
+        if (new_brk > mm->heap_end) {
+            frame->rax = -1; // Out of memory
+            asm volatile("sti");
+            return;
+        }
+
+        uint64_t start = PAGE_ALIGN_UP(old_brk);
+        for (uint64_t addr = start; addr < new_brk; addr += PAGE_SIZE) {
+            uint64_t phys = allocate_frame();
+            map_page(mm->pml4, addr, phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+        }
+
+        mm->heap_current = new_brk;
+        frame->rax = old_brk; // Return previous break
+        asm volatile("sti");
+        return;
+    } else {
+        uint64_t dec = (uint64_t)(-increment);
+        if (dec > old_brk - mm->heap_start) {
+            frame->rax = -1;
+            asm volatile("sti");
+            return;
+        }
+        uint64_t new_brk = old_brk - dec;
+        // Note: we don't unmap/free pages here yet.
+        mm->heap_current = new_brk;
+        frame->rax = old_brk; // Return previous break
+        asm volatile("sti");
+        return;
+    }
 }
 
 // FILE DESCRIPTOR OPS
 
 void sys_dup(struct interrupt_frame *frame) {
+    asm volatile("cli");
     int result = vfs_dup(frame->rdi);
     frame->rax = result;
+    asm volatile("sti");
     return;
 }
 
 void sys_dup2(struct interrupt_frame *frame) {
+    asm volatile("cli");
     int result = vfs_dup2(frame->rdi, frame->rsi);
     frame->rax = result;
+    asm volatile("sti");
     return;
 }
 
 void sys_pipe(struct interrupt_frame *frame) {
+    asm volatile("cli");
     int result = vfs_pipe((int *)frame->rdi);
     frame->rax = result;
+    asm volatile("sti");
     return;
 }
 
 // DIRECTORIES
 
 void sys_chdir(struct interrupt_frame *frame) {
+    asm volatile("cli");
     const char *user_path = (const char *)frame->rdi;
     char final_path[128];
     if (user_path[0] == '/') {
@@ -290,29 +386,35 @@ void sys_chdir(struct interrupt_frame *frame) {
     vfs_inode_t *inode = vfs_lookup(final_path, O_RDONLY);
     if(!inode){
         frame->rax = -1;
+        asm volatile("sti");
         return;
     }
     // 1 in this mean directory
     if(!(inode->type == 1)) {
         frame->rax = -1;
+        asm volatile("sti");
         return;
     }
 
     strcpy(running_process->cwd, final_path);
     vfs_free_inode(inode);
     frame->rax = 0;
+    asm volatile("sti");
     return;
 }
 
 void sys_getcwd(struct interrupt_frame *frame) {
+    asm volatile("cli");
     size_t len = strlen(running_process->cwd);
     if(len + 1 > frame->rsi) {
         frame->rax = -1;
+        asm volatile("sti");
         return;
     }
 
     strcpy((char *)frame->rdi, running_process->cwd);
     frame->rax = 0;
+    asm volatile("sti");
     return;
 }
 
@@ -343,13 +445,17 @@ void sys_clock_gettime(struct interrupt_frame *frame) {
 // DEVICE / TERMINAL
 
 void sys_ioctl(struct interrupt_frame *frame) {
+    asm volatile("cli");
     int result = vfs_ioctl(frame->rdi, frame->rsi, (void*)frame->rdx);
     frame->rax = result;
+    asm volatile("sti");
     return;
 }
 
 void sys_fcntl(struct interrupt_frame *frame) {
+    asm volatile("cli");
     int result = vfs_fcntl(frame->rdi, frame->rsi, frame->rdx);
     frame->rax = result;
+    asm volatile("sti");
     return;
 }

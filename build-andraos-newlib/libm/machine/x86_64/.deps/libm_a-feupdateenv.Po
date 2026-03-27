@@ -1,0 +1,4 @@
+libm/machine/x86_64/libm_a-feupdateenv.o: \
+  ../newlib/libm/machine/x86_64/feupdateenv.c \
+  ../newlib/libm/machine/x86_64/../../fenv/fenv_stub.c
+../newlib/libm/machine/x86_64/../../fenv/fenv_stub.c:

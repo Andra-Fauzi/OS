@@ -4,6 +4,14 @@
 #include "terminal.h"
 #include "paging.h"
 
+#define USER_STACK_SIZE 0x100000
+#define USER_STACK_BASE 0x70000000000
+#define USER_STACK_TOP (USER_STACK_BASE + USER_STACK_SIZE)
+
+#define USER_HEAP_BASE 0x60000000000
+#define USER_HEAP_SIZE 0x100000000
+#define USER_HEAP_TOP (USER_HEAP_BASE + USER_HEAP_SIZE)
+
 typedef struct ELF_HEADER {
     uint8_t magic[4];
     uint8_t class;

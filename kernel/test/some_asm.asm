@@ -8,7 +8,8 @@ section .data
     data db 'halo andra ganteng sigma ohio', 0xa
     data_len equ $ - data
     path2 db '/ELF_TEST', 0 ; test read
-    path3 db '/S_TEST', 0 ; test execve
+    path3 db '/S_TEST', 0 ; test execve 
+    path4 db '/SBRK', 0 ; test sbrk
 
 section .text
     global _start                   ; Declare _start as the program entry point
@@ -47,7 +48,7 @@ _start:
     ;jmp $
 
     mov rax, 59
-    lea rdi, path3
+    lea rdi, path4
     int 128
 
     ; --- exit syscall ---

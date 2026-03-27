@@ -1,0 +1,85 @@
+libm/ld/libm_a-s_roundl.o: ../newlib/libm/ld/s_roundl.c \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/cdefs.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_default_types.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/features.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h \
+  C:/msys64/clang64/lib/clang/22/include/stddef.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_header_macro.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_ptrdiff_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_size_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_wchar_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_null.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_max_align_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_offsetof.h \
+  C:/msys64/clang64/lib/clang/22/include/float.h \
+  C:/msys64/clang64/lib/clang/22/include/__float_header_macro.h \
+  C:/msys64/clang64/lib/clang/22/include/__float_float.h \
+  C:/msys64/clang64/lib/clang/22/include/__float_infinity_nan.h \
+  ../newlib/libm/ld/fpmath.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/endian.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_types.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_wint_t.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/config.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/ieeefp.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_types.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/endian.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_endian.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/machine/_fpmath.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/math.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/reent.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/_ansi.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/lock.h \
+  ../newlib/libm/ld/math_private.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/types.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_stdint.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/select.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_sigset.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_timeval.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/timespec.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_timespec.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_pthreadtypes.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/sched.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/types.h
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/cdefs.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_default_types.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/features.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h:
+C:/msys64/clang64/lib/clang/22/include/stddef.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_header_macro.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_ptrdiff_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_size_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_wchar_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_null.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_max_align_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_offsetof.h:
+C:/msys64/clang64/lib/clang/22/include/float.h:
+C:/msys64/clang64/lib/clang/22/include/__float_header_macro.h:
+C:/msys64/clang64/lib/clang/22/include/__float_float.h:
+C:/msys64/clang64/lib/clang/22/include/__float_infinity_nan.h:
+../newlib/libm/ld/fpmath.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/endian.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_types.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_wint_t.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/config.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/ieeefp.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_types.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/endian.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_endian.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/machine/_fpmath.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/math.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/reent.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/_ansi.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/lock.h:
+../newlib/libm/ld/math_private.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/types.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_stdint.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/select.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_sigset.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_timeval.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/timespec.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_timespec.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_pthreadtypes.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/sched.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/types.h:

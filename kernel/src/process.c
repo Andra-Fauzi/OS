@@ -2,6 +2,7 @@
 #include "ehci.h"
 #include "vfs.h"
 #include "gdt.h"
+#include "elf.h"
 
 process_t *main_process = NULL;
 process_t *running_process = NULL;
@@ -53,6 +54,12 @@ void init_thread() {
     main_process->pid = PID_TOTAL;
     main_process->mm = (mm_struct_t *)malloc(sizeof(mm_struct_t), 16);
     main_process->mm->pml4 = get_pml4();
+    // well it's kernel thread so it's not using heap and stack for now
+    main_process->mm->heap_start = 0;
+    main_process->mm->heap_end = 0;
+    main_process->mm->stack_base = 0;
+    main_process->mm->stack_top = 0;
+    main_process->mm->heap_current = 0;
     PID_TOTAL++;
     main_thread = (thread_t *)malloc(sizeof(thread_t), 16);
     memcpy(main_thread->fpu_state, initial_fpu_state, 512);
@@ -169,6 +176,12 @@ void create_process(process_t *process, void(*func)()) {
     process->next = NULL;
     process->mm = (mm_struct_t *)malloc(sizeof(mm_struct_t), 16);
     process->mm->pml4 = get_pml4();
+    // we don't know it's user or kernel, so we set it to 0
+    process->mm->heap_start = 0;
+    process->mm->heap_end = 0;
+    process->mm->stack_base = 0;
+    process->mm->stack_top = 0;
+    process->mm->heap_current = 0;
     thread_t *thread = (thread_t *)malloc(sizeof(thread_t), 16);
     thread->next = thread;
     create_thread(thread, func);

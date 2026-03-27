@@ -1,0 +1,4 @@
+libc/machine/x86_64/libc_a-setjmp.o: \
+  ../newlib/libc/machine/x86_64/setjmp.S \
+  ../newlib/libc/machine/x86_64/x86_64mach.h
+../newlib/libc/machine/x86_64/x86_64mach.h:

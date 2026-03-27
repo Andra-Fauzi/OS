@@ -57,6 +57,9 @@ void syscall_handler(struct interrupt_frame *frame) {
         case 9:
             sys_mmap(frame);
             break;
+        case 12:
+            sys_sbrk(frame);
+            break;
         case 32:
             sys_dup(frame);
             break;
@@ -69,7 +72,7 @@ void syscall_handler(struct interrupt_frame *frame) {
         case 80:
             sys_chdir(frame);
             break;
-        case 183:
+        case 79:
             sys_getcwd(frame);
             break;
         case 67:
@@ -89,6 +92,9 @@ void syscall_handler(struct interrupt_frame *frame) {
             break;
         case 72:
             sys_fcntl(frame);
+            break;
+        case 39:
+            sys_getpid(frame);
             break;
     }
 }

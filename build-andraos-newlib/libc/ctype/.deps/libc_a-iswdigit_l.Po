@@ -1,0 +1,29 @@
+libc/ctype/libc_a-iswdigit_l.o: ../newlib/libc/ctype/iswdigit_l.c \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/_ansi.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/config.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/ieeefp.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/features.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/wctype.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_types.h \
+  C:/msys64/clang64/lib/clang/22/include/stddef.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_size_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_wint_t.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_types.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_default_types.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_locale.h
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/_ansi.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/config.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/ieeefp.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/features.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/wctype.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_types.h:
+C:/msys64/clang64/lib/clang/22/include/stddef.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_size_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_wint_t.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_types.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_default_types.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_locale.h:

@@ -1,0 +1,1 @@
+libc/stdlib/libc_a-wcstoull_r.o: ../newlib/libc/stdlib/wcstoull_r.c

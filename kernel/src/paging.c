@@ -29,6 +29,20 @@ uint64_t *get_pml4() {
 	return (uint64_t *)PHYS_TO_VIRT(cr3);
 }
 
+bool check_present(uint64_t *pml4, uint64_t virt, uint64_t phys) {
+	size_t pml4_idx = (virt >> 39) & 0x1FF;
+	size_t pdpt_idx = (virt >> 30) & 0x1FF;
+	size_t pd_idx = (virt >> 21) & 0x1FF;
+	size_t pt_idx = (virt >> 12) & 0x1FF;
+
+	uint64_t *pdpt = get_next_level(pml4, pml4_idx);
+	uint64_t *pd = get_next_level(pdpt, pdpt_idx);
+	uint64_t *pt = get_next_level(pd, pd_idx);
+	if(!(pt[pt_idx] & PTE_PRESENT)) return false;
+
+	return true;
+}
+
 void map_page(uint64_t *pml4, uint64_t virt, uint64_t phys, uint64_t flags) {
 	size_t pml4_idx = (virt >> 39) & 0x1FF;
 	size_t pdpt_idx = (virt >> 30) & 0x1FF;

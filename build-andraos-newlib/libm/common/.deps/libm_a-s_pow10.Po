@@ -1,0 +1,81 @@
+libm/common/libm_a-s_pow10.o: ../newlib/libm/common/s_pow10.c \
+  ../newlib/libm/common/fdlibm.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/math.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/reent.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/_ansi.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/config.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/ieeefp.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/features.h \
+  C:/msys64/clang64/lib/clang/22/include/stddef.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_header_macro.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_ptrdiff_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_size_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_wchar_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_null.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_max_align_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_offsetof.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/cdefs.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_default_types.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_types.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_wint_t.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_types.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/lock.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/types.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_stdint.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/endian.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_endian.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/select.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_sigset.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_timeval.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/timespec.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_timespec.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_pthreadtypes.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/sched.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/types.h \
+  ../newlib/libm/common/math_config.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/stdint.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_intsup.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/errno.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/errno.h
+../newlib/libm/common/fdlibm.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/math.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/reent.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/_ansi.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/config.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/ieeefp.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/features.h:
+C:/msys64/clang64/lib/clang/22/include/stddef.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_header_macro.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_ptrdiff_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_size_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_wchar_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_null.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_max_align_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_offsetof.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/cdefs.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_default_types.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_types.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_wint_t.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_types.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/lock.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/types.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_stdint.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/endian.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_endian.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/select.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_sigset.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_timeval.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/timespec.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_timespec.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_pthreadtypes.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/sched.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/types.h:
+../newlib/libm/common/math_config.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/stdint.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_intsup.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/errno.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/errno.h:

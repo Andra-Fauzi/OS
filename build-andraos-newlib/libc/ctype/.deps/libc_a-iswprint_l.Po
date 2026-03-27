@@ -1,0 +1,82 @@
+libc/ctype/libc_a-iswprint_l.o: ../newlib/libc/ctype/iswprint_l.c \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/_ansi.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/config.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/ieeefp.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/features.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/ctype.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/cdefs.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_default_types.h \
+  C:/msys64/clang64/lib/clang/22/include/stddef.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_header_macro.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_ptrdiff_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_size_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_wchar_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_null.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_max_align_t.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_offsetof.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_locale.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/wctype.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_types.h \
+  C:/msys64/clang64/lib/clang/22/include/__stddef_wint_t.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_types.h \
+  ../newlib/libc/ctype/local.h \
+  ../newlib/libc/ctype/../locale/setlocale.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/limits.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/syslimits.h \
+  C:/msys64/clang64/lib/clang/22/include/limits.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/string.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/reent.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/lock.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/strings.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/string.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/stdlib.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/stdlib.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/alloca.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/wchar.h \
+  C:/msys64/clang64/lib/clang/22/include/stdarg.h \
+  C:/msys64/clang64/lib/clang/22/include/__stdarg___gnuc_va_list.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/locale.h \
+  ../newlib/libc/ctype/categories.h ../newlib/libc/ctype/categories.cat
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/_ansi.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/config.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/ieeefp.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/features.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/ctype.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/cdefs.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_default_types.h:
+C:/msys64/clang64/lib/clang/22/include/stddef.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_header_macro.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_ptrdiff_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_size_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_wchar_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_null.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_max_align_t.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_offsetof.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_locale.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/wctype.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/_types.h:
+C:/msys64/clang64/lib/clang/22/include/__stddef_wint_t.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/_types.h:
+../newlib/libc/ctype/local.h:
+../newlib/libc/ctype/../locale/setlocale.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/limits.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/syslimits.h:
+C:/msys64/clang64/lib/clang/22/include/limits.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/string.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/reent.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/lock.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/strings.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/string.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/stdlib.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/stdlib.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/alloca.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/wchar.h:
+C:/msys64/clang64/lib/clang/22/include/stdarg.h:
+C:/msys64/clang64/lib/clang/22/include/__stdarg___gnuc_va_list.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/locale.h:
+../newlib/libc/ctype/categories.h:
+../newlib/libc/ctype/categories.cat:

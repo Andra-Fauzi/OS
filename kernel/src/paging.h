@@ -16,6 +16,9 @@ extern volatile struct limine_hhdm_request hhdm_request;
 #define PHYS_TO_VIRT(addr) ((void*)((uint64_t)(addr) + hhdm_request.response->offset))
 #define VIRT_TO_PHYS(addr) ((uint64_t)((uint64_t)(addr) - hhdm_request.response->offset))
 
+#define PAGE_ALIGN_UP(x)   (((x) + 0xFFF) & ~0xFFF)
+#define PAGE_ALIGN_DOWN(x) ((x) & ~0xFFF)
+
 #define PTE_PRESENT (1ULL << 0)
 #define PTE_WRITABLE (1ULL << 1)
 #define PTE_USER (1ULL << 2)

@@ -6,6 +6,11 @@
 
 typedef struct __attribute__((packed)) mm_struct {
     uint64_t *pml4;
+    uint64_t heap_start;
+    uint64_t heap_current;
+    uint64_t heap_end;
+    uint64_t stack_base;
+    uint64_t stack_top;
 } mm_struct_t;
 
 typedef struct __attribute__((packed)) process {

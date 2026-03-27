@@ -1,0 +1,5 @@
+libc/ctype/libc_a-jp2uc.o: ../newlib/libc/ctype/jp2uc.c \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h:

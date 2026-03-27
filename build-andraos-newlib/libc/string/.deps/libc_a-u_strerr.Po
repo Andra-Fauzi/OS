@@ -1,0 +1,13 @@
+libc/string/libc_a-u_strerr.o: ../newlib/libc/string/u_strerr.c \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/_ansi.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/config.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/ieeefp.h \
+  C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/features.h
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/_ansi.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/newlib.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/build-andraos/targ-include/_newlib_version.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/config.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/machine/ieeefp.h:
+C:/msys64/home/ANDRA/workspace/newlib-cygwin/newlib/libc/include/sys/features.h:
