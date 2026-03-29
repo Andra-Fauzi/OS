@@ -1,4 +1,5 @@
 #include "init.h"
+#include "cpu.h"
 #include "main.h"
 #include "gdt.h"
 #include "terminal.h"
@@ -39,6 +40,7 @@ void get_framebuffer(struct limine_framebuffer_request* request) {
 }
 
 void sys_init() {
+    cpu_init();
     frame_allocator_init();
     print_str("frame allocator initialized\n");
 

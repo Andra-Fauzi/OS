@@ -153,14 +153,21 @@ void sys_execve(struct interrupt_frame *frame) {
     running_process->mm->heap_current = USER_HEAP_BASE;
     load_cr3(VIRT_TO_PHYS(new_mm->pml4));
 
-    // Allocate and map a fresh user stack
-    uint64_t stack_phys = allocate_frame(); // 4096 bytes
+    // Allocate and map a fresh user stack (1MB)
     uint64_t stack_virt = USER_STACK_BASE;
-    map_page(new_mm->pml4, stack_virt, stack_phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+    for(uint64_t offset = 0; offset < USER_STACK_SIZE; offset += PAGE_SIZE) {
+        uint64_t phys = allocate_frame();
+        if (phys == 0) {
+            printf("Failed to allocate frame for user stack in execve!\n");
+            break;
+        }
+        map_page(new_mm->pml4, stack_virt + offset, phys, PTE_PRESENT | PTE_WRITABLE | PTE_USER);
+        memset(PHYS_TO_VIRT(phys), 0, PAGE_SIZE);
+    }
 
     // Set up the interrupt frame to return to the new entry point
     frame->rip = (uint64_t)elf_header->entry_point;
-    frame->rsp = USER_STACK_TOP;
+    frame->rsp = (USER_STACK_TOP - 16) & ~0xF; // Pastikan 16-byte aligned
     frame->rax = 0;
 
     // Clean up the temporary header
@@ -219,7 +226,8 @@ void sys_read(struct interrupt_frame *frame) {
     running_thread->lock = true;
     asm volatile("cli");
     int result = vfs_read(frame->rdi, (void *)frame->rsi, frame->rdx);
-    frame->rax = result;
+    // printf("sys_read: fd=%d, result=%d\n", (int)frame->rdi, result);
+    frame->rax = (uint64_t)result;
     asm volatile("sti");
     running_thread->lock = false;
     return;
@@ -458,4 +466,11 @@ void sys_fcntl(struct interrupt_frame *frame) {
     frame->rax = result;
     asm volatile("sti");
     return;
+}
+
+void sys_isatty(struct interrupt_frame *frame) {
+    asm volatile("cli");
+    int result = vfs_isatty(frame->rdi);
+    frame->rax = (uint64_t)result;
+    asm volatile("sti");
 }

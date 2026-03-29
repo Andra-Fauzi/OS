@@ -28,3 +28,4 @@ void sys_clock_gettime(struct interrupt_frame *frame);
 void sys_ioctl(struct interrupt_frame *frame);
 void sys_fcntl(struct interrupt_frame *frame);
 void sys_getpid(struct interrupt_frame *frame);
+void sys_isatty(struct interrupt_frame *frame);

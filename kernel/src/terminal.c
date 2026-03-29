@@ -281,17 +281,34 @@ void print_float(float val) {
 }
 */
 
-static void print_hex_unlocked(uint64_t n) {
+static void print_hex_unlocked(uint64_t n, int width, char pad) {
 	char hex[] = "0123456789ABCDEF";
-	print_str_unlocked("0x");
-	for(int i = 60; i >= 0; i -= 4) {
-		write_terminal_unlocked(hex[(n >> i) & 0xF]);
+	char buf[16];
+	int i = 0;
+	
+	if (n == 0) {
+		buf[i++] = '0';
+	} else {
+		while (n > 0 && i < 16) {
+			buf[i++] = hex[n & 0xF];
+			n >>= 4;
+		}
+	}
+
+	while (i < width) {
+		write_terminal_unlocked(pad);
+		width--;
+	}
+
+	while (i > 0) {
+		write_terminal_unlocked(buf[--i]);
 	}
 }
 
 void print_hex(uint64_t n) {
     lock_terminal();
-    print_hex_unlocked(n);
+    print_str_unlocked("0x");
+    print_hex_unlocked(n, 16, '0');
     unlock_terminal();
 }
 
@@ -299,32 +316,71 @@ void printf(char *str, ...) {
 	va_list args;
 	va_start(args, str);
 
-    lock_terminal();
+	lock_terminal();
 	while(*str && *str != '\0') {
-		if(*str == '%' && *(str + 1) == 'd') {
-			int64_t val = va_arg(args, int64_t);
-			print_int_unlocked(val);
-			str += 2;
-		}
-		else if(*str == '%' && *(str + 1) == 'u') {
-			uint64_t val = va_arg(args, uint64_t);
-			print_uint_unlocked(val);
-			str += 2;
-		}
-		else if(*str == '%' && *(str + 1) == 'c') {
-			char val = va_arg(args, int);
-			write_terminal_unlocked(val);
-			str += 2;
-		}
-		else if(*str == '%' && *(str + 1) == 's') {
-			char *val = va_arg(args, char *);
-			print_str_unlocked(val);
-			str += 2;
-		}
-		else if(*str == '%' && *(str + 1) == 'x') {
-			uint64_t val = va_arg(args, uint64_t);
-			print_hex_unlocked(val);
-			str += 2;
+		if(*str == '%') {
+			str++;
+			if(*str == '%') {
+				write_terminal_unlocked('%');
+				str++;
+				continue;
+			}
+
+			int width = 0;
+			char pad = ' ';
+			if(*str == '0') {
+				pad = '0';
+				str++;
+			}
+			while(*str >= '0' && *str <= '9') {
+				width = width * 10 + (*str - '0');
+				str++;
+			}
+
+			int is_long = 0;
+			if(*str == 'l') {
+				is_long = 1;
+				str++;
+			}
+
+			if(*str == 'd' || *str == 'i') {
+				int64_t val = is_long ? va_arg(args, int64_t) : va_arg(args, int);
+				print_int_unlocked(val);
+				str++;
+			}
+			else if(*str == 'u') {
+				uint64_t val = is_long ? va_arg(args, uint64_t) : va_arg(args, unsigned int);
+				print_uint_unlocked(val);
+				str++;
+			}
+			else if(*str == 'x') {
+				uint64_t val = is_long ? va_arg(args, uint64_t) : va_arg(args, unsigned int);
+				print_hex_unlocked(val, width, pad);
+				str++;
+			}
+			else if(*str == 'p') {
+				uint64_t val = va_arg(args, uint64_t);
+				print_str_unlocked("0x");
+				print_hex_unlocked(val, 16, '0');
+				str++;
+			}
+			else if(*str == 's') {
+				char *val = va_arg(args, char *);
+				print_str_unlocked(val ? val : "(null)");
+				str++;
+			}
+			else if(*str == 'c') {
+				char val = va_arg(args, int);
+				write_terminal_unlocked(val);
+				str++;
+			}
+			else {
+				write_terminal_unlocked('%');
+				if (*str) {
+					write_terminal_unlocked(*str);
+					str++;
+				}
+			}
 		}
 		else {
 			write_terminal_unlocked(*str);

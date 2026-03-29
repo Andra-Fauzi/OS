@@ -24,7 +24,7 @@ typedef struct __attribute__((packed)) process {
     mm_struct_t *mm;
 } process_t;
 
-typedef struct __attribute__((packed)) thread {
+typedef struct thread {
     struct interrupt_frame frame;
     struct thread *next;
     bool lock;

@@ -249,7 +249,13 @@ int vfs_close(int fd) {
 
 int vfs_read(int fd, void *buf, size_t size) {
     lock_process();
-    if (fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used || !(running_process->open_files[fd].desc->flags & O_RDONLY)) {
+    if (fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
+        return -1;
+    }
+    
+    int access_mode = running_process->open_files[fd].desc->flags & O_ACCMODE;
+    if (access_mode == O_WRONLY) {
         unlock_process();
         return -1;
     }
@@ -270,7 +276,13 @@ int vfs_read(int fd, void *buf, size_t size) {
 
 int vfs_write(int fd, const void *buf, size_t size) {
     lock_process();
-    if (fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used || !(running_process->open_files[fd].desc->flags & O_WRONLY)) {
+    if (fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
+        return -1;
+    }
+
+    int access_mode = running_process->open_files[fd].desc->flags & O_ACCMODE;
+    if (access_mode == O_RDONLY) {
         unlock_process();
         return -1;
     }
@@ -549,6 +561,25 @@ int vfs_pipe(int *pipefd) {
     pipe->read_offset = 0;
     pipe->write_offset = 0;
 
+    unlock_process();
+    return 0;
+}
+
+#include "vfs_terminal.h"
+
+int vfs_isatty(int fd) {
+    lock_process();
+    if(fd < 0 || fd >= MAX_OPEN_FILES || !running_process->open_files[fd].used) {
+        unlock_process();
+        return 0;
+    }
+
+    vfs_file_t *f = &running_process->open_files[fd];
+    vfs_inode_t *inode = f->desc->inode;
+    if(inode && inode->mp && inode->mp->operations == vfs_terminal_get_ops()) {
+        unlock_process();
+        return 1;
+    }
     unlock_process();
     return 0;
 }

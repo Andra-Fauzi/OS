@@ -10,9 +10,10 @@
 #define VFS_TYPE_LENGTH 32
 
 // Flags for open
-#define O_RDONLY 0x01
-#define O_WRONLY 0x02
-#define O_RDWR   0x03
+#define O_RDONLY 0x00
+#define O_WRONLY 0x01
+#define O_RDWR   0x02
+#define O_ACCMODE 0x03
 #define O_CREAT  0x04
 
 #define MAX_INODES 256
@@ -117,6 +118,7 @@ int vfs_dup(int fd);
 int vfs_dup2(int oldfd, int newfd);
 int vfs_pipe(int *pipefd);
 vfs_file_desc_t* vfs_allocate_descriptor(vfs_inode_t *inode, int flags);
+int vfs_isatty(int fd);
 int vfs_ioctl(int fd, int request, void *arg);
 int vfs_fcntl(int fd, int cmd, uint64_t arg);
 vfs_inode_t* vfs_allocate_inode(mountpoint_t *mp, void *fs_data, size_t size_of_file, uint32_t ino, uint32_t type);

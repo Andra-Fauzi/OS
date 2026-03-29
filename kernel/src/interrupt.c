@@ -96,6 +96,9 @@ void syscall_handler(struct interrupt_frame *frame) {
         case 39:
             sys_getpid(frame);
             break;
+        case 89:   // sys_isatty (custom)
+            sys_isatty(frame);
+            break;
     }
 }
 

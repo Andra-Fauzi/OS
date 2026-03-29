@@ -128,6 +128,6 @@ void run_elf(ELF_HEADER_t *elf_header) {
     
     // Jump to usermode with RSP pointing to the TOP of the stack
     printf("starting\n");
-    jump_to_usermode(elf_header->entry_point, USER_STACK_TOP);
+    jump_to_usermode(elf_header->entry_point, (USER_STACK_TOP - 16) & ~0xF);
     printf("end program\n");
 }

@@ -84,12 +84,21 @@ void isr_handler(struct interrupt_frame* frame) {
             }
         }
         
-        printf("Page Fault at %x\n", cr2);
-        printf("Error Code %x\n", frame->err);
+        printf("Page Fault at %lx\n", cr2);
+        printf("Error Code %lx\n", frame->err);
+        while(1) asm volatile("hlt");
+    } else if (frame->int_no == 13) {
+        printf("General Protection Fault (Interrupt 13)\n");
+        printf("Error Code : %016lx\n", frame->err);
+        printf("RIP : %016lx RSP: %016lx\n", frame->rip, frame->rsp);
+        printf("RAX: %016lx RBX: %016lx RCX: %016lx\n", frame->rax, frame->rbx, frame->rcx);
+        printf("RDX: %016lx RSI: %016lx RDI: %016lx\n", frame->rdx, frame->rsi, frame->rdi);
+        printf("RBP: %016lx RFLAGS: %016lx\n", frame->rbp, frame->rflags);
         while(1) asm volatile("hlt");
     }
 
-    printf("Interrupt %d\n", frame->int_no);
+    printf("Interrupt %d\n", (uint32_t)frame->int_no);
+    printf("Error Code : %x\n", frame->err);
     printf("RIP : %x\n", frame->rip);
     while(1) asm volatile("hlt");
 }
